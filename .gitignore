@@ -1,0 +1,5 @@
+target/
+
+firebase-tools-linux
+
+*.log
