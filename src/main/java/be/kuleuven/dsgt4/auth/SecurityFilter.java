@@ -1,6 +1,8 @@
 package be.kuleuven.dsgt4.auth;
 
 import be.kuleuven.dsgt4.User;
+import com.auth0.jwt.JWT;
+import com.auth0.jwt.interfaces.DecodedJWT;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,10 +27,24 @@ public class SecurityFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         // TODO: (level 1) decode Identity Token and assign correct email and role
         // TODO: (level 2) verify Identity Token
+        String authorizationHeader = request.getHeader("Authorization");
 
-        var user = new User("test@example.com", "manager");
-        SecurityContext context = SecurityContextHolder.getContext();
-        context.setAuthentication(new FirebaseAuthentication(user));
+        if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
+            String token = authorizationHeader.substring(7); // Remove "Bearer " prefix
+            System.out.println("Authorization Header: " + authorizationHeader);
+            System.out.println("Extracted Token: " + token);
+
+            DecodedJWT jwt = JWT.decode(token); // Decode without verification
+
+            String email = jwt.getClaim("email").asString();
+//          TODO: handle users with multiple roles
+            List<String> roles = jwt.getClaim("roles").asList(String.class);
+            String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user" ;
+
+            User user = new User(email, role);
+            SecurityContext context = SecurityContextHolder.getContext();
+            context.setAuthentication(new FirebaseAuthentication(user));
+        }
 
         filterChain.doFilter(request, response);
     }
@@ -54,6 +70,12 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return new ArrayList<>();
             }
         }
+//        TODO:Extension
+//        public Collection<? extends GrantedAuthority> getAuthorities() {
+//            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
+//            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase()));
+//            return authorities;
+//        }
 
         @Override
         public Object getCredentials() {
