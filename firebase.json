@@ -16,6 +16,17 @@
     "firestore": {
       "host": "0.0.0.0",
       "port": 8084
-    }
+    },
+    "functions": {
+      "port": 5001
+    },
+    "database": {
+      "port": 9000
+    },
+    "singleProjectMode": true
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
   }
 }
