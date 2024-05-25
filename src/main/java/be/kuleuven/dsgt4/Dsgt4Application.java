@@ -33,32 +33,44 @@ public class Dsgt4Application {
 		return Objects.equals(System.getenv("GAE_ENV"), "standard");
 	}
 
+    @Bean
+    public String projectId() {
+        if (this.isProduction()) {
+            return "fir-distributed-systems-930eb"; // production project ID
+        } else {
+            // return "demo-distributed-systems-kul"; // local project ID
+			return "fir-distributed-systems-930eb"; // local project ID
+        }
+    }
+	
+	// @Bean
+	// public Firestore firestore() {
+	// 	if (isProduction()) {
+	// 		return FirestoreOptions.getDefaultInstance()
+	// 				.toBuilder()
+	// 				.setProjectId(this.projectId())
+	// 				.build()
+	// 				.getService();
+	// 	} else {
+	// 		return FirestoreOptions.getDefaultInstance()
+	// 				.toBuilder()
+	// 				.setProjectId(this.projectId())
+	// 				.setCredentials(new FirestoreOptions.EmulatorCredentials())
+	// 				.setEmulatorHost("localhost:8084")
+	// 				.build()
+	// 				.getService();
+	// 	}
+	// }
 	@Bean
-	public String projectId() {
-		if (this.isProduction()) {
-			return "TODO level 2";
-		} else {
-			return "demo-distributed-systems-kul";
-		}
-	}
-	@Bean
-	public Firestore db() {
-		if (isProduction()) {
-			return FirestoreOptions.getDefaultInstance()
-					.toBuilder()
-					.setProjectId(this.projectId())
-					.build()
-					.getService();
-		} else {
-			return FirestoreOptions.getDefaultInstance()
-					.toBuilder()
-					.setProjectId(this.projectId())
-					.setCredentials(new FirestoreOptions.EmulatorCredentials())
-					.setEmulatorHost("localhost:8084")
-					.build()
-					.getService();
-		}
-	}
+    public Firestore firestore() {
+        FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
+                .setProjectId(projectId());
+        if (!isProduction()) {
+            firestoreOptionsBuilder.setCredentials(new FirestoreOptions.EmulatorCredentials())
+                    .setEmulatorHost("localhost:8084");
+        }
+        return firestoreOptionsBuilder.build().getService();
+    }
 	/*
 	 * You can use this builder to create a Spring WebClient instance which can be used to make REST-calls.
 	 */
@@ -74,11 +86,6 @@ public class Dsgt4Application {
 		DefaultHttpFirewall firewall = new DefaultHttpFirewall();
 		firewall.setAllowUrlEncodedSlash(true);
 		return firewall;
-	}
-
-
-	
-
-	
+	}	
 
 }
