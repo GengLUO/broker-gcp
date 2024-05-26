@@ -1,3 +1,13 @@
+## Add firebaseadminsdk
+in the src/main/java/be.kuleuven.dsgt4/auth, create a new file called
+```
+firebase-adminsdk.json
+```
+Then copy and paste the follwing to this json file
+```
+The content is in our Whatsapp
+```
+
 ## Setup and Execution
 ### Step 1: Run the Emulator Locally
     ./firebase-tools-linux emulators:start --project demo-distributed-systems-kul
