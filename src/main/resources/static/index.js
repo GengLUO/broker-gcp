@@ -9,17 +9,24 @@ import {
   signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
 
+// Firestore Functions
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  connectFirestoreEmulator
+} from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
+
 // Your web app's Firebase configuration for production
 const productionFirebaseConfig = {
-                                   apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
-                                   authDomain: "broker-da44b.firebaseapp.com",
-                                   projectId: "broker-da44b",
-                                   storageBucket: "broker-da44b.appspot.com",
-                                   messagingSenderId: "78512882731",
-                                   appId: "1:78512882731:web:7fd2c8c6aa99051296566e",
-                                   measurementId: "G-60LX98H1E5"
-                                 };
-
+  apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
+  authDomain: "broker-da44b.firebaseapp.com",
+  projectId: "broker-da44b",
+  storageBucket: "broker-da44b.appspot.com",
+  messagingSenderId: "78512882731",
+  appId: "1:78512882731:web:7fd2c8c6aa99051296566e",
+  measurementId: "G-60LX98H1E5"
+};
 
 // Your web app's Firebase configuration for local development
 const localFirebaseConfig = {
@@ -45,6 +52,9 @@ function setupAuth() {
   // signout any existing user. Removes any token still in the auth context
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
+  // initialize Firebase app
+  const firestore = getFirestore(firebaseApp);
+
   try {
     auth.signOut();
   } catch (err) { }
@@ -52,8 +62,14 @@ function setupAuth() {
   // connect to local emulator when running on localhost
   if (location.hostname === "localhost") {
     connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+    // connect to Firestore emulator
+    connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
 
+  // Save auth and db to global scope
+  window.firebaseApp = firebaseApp;
+  window.auth = auth;
+  window.firestore = firestore;
 }
 
 function wireGuiUpEvents() {
@@ -89,8 +105,16 @@ function wireGuiUpEvents() {
     // Sign up the user using Firebase's createUserWithEmailAndPassword method
 
     createUserWithEmailAndPassword(getAuth(), email.value, password.value)
-      .then(function () {
+      .then(async function (userCredential) {
         console.log("created");
+        // Add user profile to Firestore
+        const user = userCredential.user;
+        await addDoc(collection(getFirestore(), "users"), {
+          email: user.email,
+          uid: user.uid,
+          createdAt: new Date()
+        });
+        console.log("User profile added to Firestore");
       })
       .catch(function (error) {
         // Show an error message
@@ -206,7 +230,6 @@ function whoami(token) {
     .catch(function (error) {
       console.log(error);
     });
-
 
 }
 

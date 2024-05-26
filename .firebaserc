@@ -1,5 +1,9 @@
 {
   "projects": {
-    "default": "broker-da44b"
-  }
+    "default": "broker-da44b",
+    "broker": "broker-da44b"
+  },
+  "targets": {},
+  "etags": {},
+  "dataconnectEmulatorConfig": {}
 }
