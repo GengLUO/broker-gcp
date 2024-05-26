@@ -8,50 +8,41 @@ import {
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
-import { 
-  getAnalytics 
-} from "https://www.gstatic.com/firebasejs/9.9.4/firebase-analytics.js";
 
-/** ----------------- Added by Jeffee ----------------- */
 // Your web app's Firebase configuration for production
 const productionFirebaseConfig = {
-  apiKey: "AIzaSyDlxp6-sB-SrefNgNOSLWoL2an1pNkKO7w",
-  authDomain: "fir-distributed-systems-930eb.firebaseapp.com",
-  projectId: "fir-distributed-systems-930eb",
-  storageBucket: "fir-distributed-systems-930eb.appspot.com",
-  messagingSenderId: "501642771972",
-  appId: "1:501642771972:web:1ca65fa3f71292a7fd7f51",
-  measurementId: "G-CFXD70MPK9"
-};
+                                   apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
+                                   authDomain: "broker-da44b.firebaseapp.com",
+                                   projectId: "broker-da44b",
+                                   storageBucket: "broker-da44b.appspot.com",
+                                   messagingSenderId: "78512882731",
+                                   appId: "1:78512882731:web:7fd2c8c6aa99051296566e",
+                                   measurementId: "G-60LX98H1E5"
+                                 };
+
 
 // Your web app's Firebase configuration for local development
 const localFirebaseConfig = {
   apiKey: "AIzaSyBoLKKR7OFL2ICE15Lc1-8czPtnbej0jWY",
   authDomain: "localhost",
-  // projectId: "demo-distributed-systems-kul",
-  projectId: "fir-distributed-systems-930eb",
+  projectId: "demo-distributed-systems-kul"
 };
-
-/** ----------------- Added by Jeffee ----------------- */
 
 // we setup the authentication, and then wire up some key events to event handlers
 setupAuth();
 wireGuiUpEvents();
 wireUpAuthChange();
 
-
 //setup authentication with local or cloud configuration. 
 function setupAuth() {
   let firebaseConfig;
   if (location.hostname === "localhost") {
-    /** ----------------- Changed by Jeffee ----------------- */
     // firebaseConfig = {
     //   apiKey: "AIzaSyBoLKKR7OFL2ICE15Lc1-8czPtnbej0jWY",
     //   projectId: "demo-distributed-systems-kul",
     // };
     firebaseConfig = localFirebaseConfig;
   } else {
-    /** ----------------- Changed by Jeffee ----------------- */
     // firebaseConfig = {
     //   // TODO: for level 2, paste your config here
     // };
@@ -70,9 +61,6 @@ function setupAuth() {
     connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
   }
 
-  /** ----------------- Added by Jeffee ----------------- */
-  const analytics = getAnalytics(firebaseApp);
-  /** ----------------- Added by Jeffee ----------------- */
 }
 
 function wireGuiUpEvents() {
@@ -188,7 +176,7 @@ function addContent(text) {
 function getHello(token) {
 
   fetch('/api/hello', {
-    headers: { Authorization: 'Bearer {token}' }
+    headers: { Authorization: 'Bearer ' + token }
   })
     .then((response) => {
       return response.text();

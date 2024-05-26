@@ -3,3 +3,5 @@ target/
 firebase-tools-linux
 
 *.log
+
+src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json
