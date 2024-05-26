@@ -25,7 +25,7 @@ const productionFirebaseConfig = {
 const localFirebaseConfig = {
   apiKey: "AIzaSyBoLKKR7OFL2ICE15Lc1-8czPtnbej0jWY",
   authDomain: "localhost",
-  projectId: "demo-distributed-systems-kul"
+  projectId: "broker-da44b"
 };
 
 // we setup the authentication, and then wire up some key events to event handlers
@@ -37,15 +37,8 @@ wireUpAuthChange();
 function setupAuth() {
   let firebaseConfig;
   if (location.hostname === "localhost") {
-    // firebaseConfig = {
-    //   apiKey: "AIzaSyBoLKKR7OFL2ICE15Lc1-8czPtnbej0jWY",
-    //   projectId: "demo-distributed-systems-kul",
-    // };
     firebaseConfig = localFirebaseConfig;
   } else {
-    // firebaseConfig = {
-    //   // TODO: for level 2, paste your config here
-    // };
     firebaseConfig = productionFirebaseConfig;
   }
 
@@ -76,9 +69,13 @@ function wireGuiUpEvents() {
     // Sign in the user using Firebase's signInWithEmailAndPassword method
 
     signInWithEmailAndPassword(getAuth(), email.value, password.value)
-      .then(function () {
-
-        console.log("signedin");
+      .then(function (userCredential) {
+        console.log("signed in");
+        // Get the ID token
+        userCredential.user.getIdToken().then((token) => {
+          console.log("ID Token:", token);
+          // You can use this token to make authenticated requests
+        });
       })
       .catch(function (error) {
         // Show an error message
