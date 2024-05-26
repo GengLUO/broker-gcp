@@ -10,17 +10,23 @@ The content is in our Whatsapp
 
 ## Setup and Execution
 ### Step 1: Run the Emulator Locally
-    ./firebase-tools-linux emulators:start --project demo-distributed-systems-kul
+    ./firebase-tools-linux emulators:start
+
+    or
+
+    firebase emulators:start
+
 To change it to use the cloud, please change the index.js and the WebSecurityConfig
 ### Step 2: Start Spring application
     mvn spring-boot:run
 
+### Step 3: Access the Application and Sign Up
+  http://localhost:8080
+  <img src="signup.png" alt="alt text" width="600" height="300">
 
-
-#
-
-
-It sounds like you're working on a software project and have a list of tasks or observations you need to reorganize or clarify. Let's reconstruct this into a more structured format that might be easier to follow and implement:
+### Step 4: Access the Firestore Emulator Firestore (database monitor)
+  http://localhost:8081/firestore
+  <img src="firestore_signup_result.png" alt="alt text" width="600" height="300">
 
 ### 3.1.1 REST Controller and WebClient
 - **REST Controller**: Verify the REST controller included in the sample project is functioning as intended.
