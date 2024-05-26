@@ -3,6 +3,9 @@ package be.kuleuven.dsgt4.auth;
 import be.kuleuven.dsgt4.User;
 import com.auth0.jwt.JWT;
 import com.auth0.jwt.interfaces.DecodedJWT;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseAuthException;
+import com.google.firebase.auth.FirebaseToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -25,25 +28,39 @@ public class SecurityFilter extends OncePerRequestFilter {
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
-        // TODO: (level 1) decode Identity Token and assign correct email and role
-        // TODO: (level 2) verify Identity Token
         String authorizationHeader = request.getHeader("Authorization");
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String token = authorizationHeader.substring(7); // Remove "Bearer " prefix
             System.out.println("Authorization Header: " + authorizationHeader);
             System.out.println("Extracted Token: " + token);
+// (level 1) decode Identity Token and assign correct email and role
+//            DecodedJWT jwt = JWT.decode(token); // Decode without verification
+//
+//            String email = jwt.getClaim("email").asString();
+////          TODO: handle users with multiple roles
+//            List<String> roles = jwt.getClaim("roles").asList(String.class);
+//            String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user" ;
+//            User user = new User(email, role);
+//            SecurityContext context = SecurityContextHolder.getContext();
+//            context.setAuthentication(new FirebaseAuthentication(user));
 
-            DecodedJWT jwt = JWT.decode(token); // Decode without verification
+//(level 2) verify Identity Token
+            try {
+                FirebaseToken firebaseToken = FirebaseAuth.getInstance().verifyIdToken(token);
+                String uid = firebaseToken.getUid();
+                String email = firebaseToken.getEmail();
 
-            String email = jwt.getClaim("email").asString();
-//          TODO: handle users with multiple roles
-            List<String> roles = jwt.getClaim("roles").asList(String.class);
-            String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user" ;
+                // Extract roles from the custom claims
+                List<String> roles = (List<String>) firebaseToken.getClaims().get("roles");
+                String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user";
 
-            User user = new User(email, role);
-            SecurityContext context = SecurityContextHolder.getContext();
-            context.setAuthentication(new FirebaseAuthentication(user));
+                User user = new User(email, role);
+                SecurityContext context = SecurityContextHolder.getContext();
+                context.setAuthentication(new FirebaseAuthentication(user));
+            } catch (FirebaseAuthException e) {
+                throw new RuntimeException(e);
+            }
         }
 
         filterChain.doFilter(request, response);
