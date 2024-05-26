@@ -1,16 +1,14 @@
 ## Setup and Execution
 ### Step 1: Run the Emulator Locally
-
-    ```bash
     ./firebase-tools-linux emulators:start --project demo-distributed-systems-kul
-    ```
-    
-    To change it to use the cloud, please change the index.js and the WebSecurityConfig
+To change it to use the cloud, please change the index.js and the WebSecurityConfig
 ### Step 2: Start Spring application
-
-    ```bash
     mvn spring-boot:run
-    ```
+
+
+
+#
+
 
 It sounds like you're working on a software project and have a list of tasks or observations you need to reorganize or clarify. Let's reconstruct this into a more structured format that might be easier to follow and implement:
 
