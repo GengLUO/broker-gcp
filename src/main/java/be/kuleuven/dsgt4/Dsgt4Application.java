@@ -60,7 +60,7 @@ public class Dsgt4Application {
 	@Bean
 	public Firestore firestore() throws IOException {
 		FileInputStream serviceAccount =
-				new FileInputStream("src/broker-da44b-firebase-adminsdk-7s570-00d5f8b517.json");
+				new FileInputStream("/home/jiaao/dapp2024work/broker-gcp/src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json");
 
 		FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
 				.setProjectId(projectId());
