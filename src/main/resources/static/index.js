@@ -17,15 +17,33 @@ wireUpAuthChange();
 //setup authentication with local or cloud configuration. 
 function setupAuth() {
   let firebaseConfig;
-  if (location.hostname === "localhost") {
+  if (location.hostname === "localhost")
+  {
     firebaseConfig = {
       apiKey: "AIzaSyBoLKKR7OFL2ICE15Lc1-8czPtnbej0jWY",
       projectId: "demo-distributed-systems-kul",
     };
-  } else {
+    firebaseConfig = {
+                      apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
+                      authDomain: "broker-da44b.firebaseapp.com",
+                      projectId: "broker-da44b",
+                      storageBucket: "broker-da44b.appspot.com",
+                      messagingSenderId: "78512882731",
+                      appId: "1:78512882731:web:7fd2c8c6aa99051296566e"
+                    };
+  } else
+  {
     firebaseConfig = {
       // TODO: for level 2, paste your config here
     };
+    firebaseConfig = {
+                  apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
+                  authDomain: "broker-da44b.firebaseapp.com",
+                  projectId: "broker-da44b",
+                  storageBucket: "broker-da44b.appspot.com",
+                  messagingSenderId: "78512882731",
+                  appId: "1:78512882731:web:7fd2c8c6aa99051296566e"
+                };
   }
 
   // signout any existing user. Removes any token still in the auth context
@@ -37,7 +55,7 @@ function setupAuth() {
 
   // connect to local emulator when running on localhost
   if (location.hostname === "localhost") {
-    connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+//    connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
   }
 }
 
