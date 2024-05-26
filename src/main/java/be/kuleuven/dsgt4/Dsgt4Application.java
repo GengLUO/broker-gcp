@@ -1,5 +1,6 @@
 package be.kuleuven.dsgt4;
 
+import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.FirestoreOptions;
 import org.springframework.boot.SpringApplication;
@@ -13,6 +14,8 @@ import org.springframework.security.web.firewall.HttpFirewall;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.netty.http.client.HttpClient;
 
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Objects;
 
 @EnableHypermediaSupport(type = EnableHypermediaSupport.HypermediaType.HAL)
@@ -36,41 +39,37 @@ public class Dsgt4Application {
     @Bean
     public String projectId() {
         if (this.isProduction()) {
-            return "fir-distributed-systems-930eb"; // production project ID
+            return "broker-da44b"; // production project ID
         } else {
             // return "demo-distributed-systems-kul"; // local project ID
-			return "fir-distributed-systems-930eb"; // local project ID
+			return "broker-da44b"; // local project ID
         }
     }
-	
-	// @Bean
-	// public Firestore firestore() {
-	// 	if (isProduction()) {
-	// 		return FirestoreOptions.getDefaultInstance()
-	// 				.toBuilder()
-	// 				.setProjectId(this.projectId())
-	// 				.build()
-	// 				.getService();
-	// 	} else {
-	// 		return FirestoreOptions.getDefaultInstance()
-	// 				.toBuilder()
-	// 				.setProjectId(this.projectId())
-	// 				.setCredentials(new FirestoreOptions.EmulatorCredentials())
-	// 				.setEmulatorHost("localhost:8084")
-	// 				.build()
-	// 				.getService();
-	// 	}
-	// }
+
+//	@Bean
+//    public Firestore firestore() {
+//        FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
+//                .setProjectId(projectId());
+//        if (!isProduction()) {
+//            firestoreOptionsBuilder.setCredentials(new FirestoreOptions.EmulatorCredentials())
+//                    .setEmulatorHost("localhost:8084");
+//        }
+//        return firestoreOptionsBuilder.build().getService();
+//    }
+
 	@Bean
-    public Firestore firestore() {
-        FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
-                .setProjectId(projectId());
-        if (!isProduction()) {
-            firestoreOptionsBuilder.setCredentials(new FirestoreOptions.EmulatorCredentials())
-                    .setEmulatorHost("localhost:8084");
-        }
-        return firestoreOptionsBuilder.build().getService();
-    }
+	public Firestore firestore() throws IOException {
+		FileInputStream serviceAccount =
+				new FileInputStream("/home/jiaao/dapp2024work/broker-gcp/src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json");
+
+		FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
+				.setProjectId(projectId());
+		if (!isProduction()) {
+			firestoreOptionsBuilder.setCredentials(GoogleCredentials.fromStream(serviceAccount));
+		}
+		return firestoreOptionsBuilder.build().getService();
+	}
+
 	/*
 	 * You can use this builder to create a Spring WebClient instance which can be used to make REST-calls.
 	 */
