@@ -154,7 +154,7 @@ function addContent(text) {
 function getHello(token) {
 
   fetch('/api/hello', {
-    headers: { Authorization: 'Bearer {token}' }
+    headers: { Authorization: 'Bearer ' + token }
   })
     .then((response) => {
       return response.text();
