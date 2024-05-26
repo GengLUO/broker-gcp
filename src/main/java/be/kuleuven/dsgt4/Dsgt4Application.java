@@ -3,9 +3,13 @@ package be.kuleuven.dsgt4;
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.FirestoreOptions;
+import com.google.firebase.FirebaseApp;
+import com.google.firebase.FirebaseOptions;
+
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.hateoas.config.EnableHypermediaSupport;
 import org.springframework.hateoas.config.HypermediaWebClientConfigurer;
 import org.springframework.http.client.reactive.ReactorClientHttpConnector;
@@ -22,14 +26,11 @@ import java.util.Objects;
 @SpringBootApplication
 public class Dsgt4Application {
 
-
-
 	@SuppressWarnings("unchecked")
 	public static void main(String[] args)  {
 		//System.setProperty("server.port", System.getenv().getOrDefault("PORT", "8080"));
 		SpringApplication.run(Dsgt4Application.class, args);
-
-}
+	}
 
 	@Bean
 	public boolean isProduction() {
@@ -45,30 +46,42 @@ public class Dsgt4Application {
 			return "broker-da44b"; // local project ID
         }
     }
+    
+    @Bean
+    @Profile("prod")
+    public Firestore firestoreProd() throws IOException {
+        String projectId = projectId();
+        FileInputStream serviceAccount =
+                new FileInputStream("src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json");
 
-//	@Bean
-//    public Firestore firestore() {
-//        FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
-//                .setProjectId(projectId());
-//        if (!isProduction()) {
-//            firestoreOptionsBuilder.setCredentials(new FirestoreOptions.EmulatorCredentials())
-//                    .setEmulatorHost("localhost:8084");
-//        }
-//        return firestoreOptionsBuilder.build().getService();
-//    }
+        FirebaseOptions options = new FirebaseOptions.Builder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setProjectId(projectId)
+                .build();
 
-	@Bean
-	public Firestore firestore() throws IOException {
-		FileInputStream serviceAccount =
-				new FileInputStream("/home/jiaao/dapp2024work/broker-gcp/src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json");
+        if (FirebaseApp.getApps().isEmpty()) {
+            FirebaseApp.initializeApp(options);
+        }
 
-		FirestoreOptions.Builder firestoreOptionsBuilder = FirestoreOptions.getDefaultInstance().toBuilder()
-				.setProjectId(projectId());
-		if (!isProduction()) {
-			firestoreOptionsBuilder.setCredentials(GoogleCredentials.fromStream(serviceAccount));
-		}
-		return firestoreOptionsBuilder.build().getService();
-	}
+        FirestoreOptions firestoreOptions = FirestoreOptions.newBuilder()
+                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                .setProjectId(projectId)
+                .build();
+
+        return firestoreOptions.getService();
+    }
+
+    @Bean
+    @Profile("dev")
+    public Firestore firestoreDev() {
+        FirestoreOptions firestoreOptions = FirestoreOptions.getDefaultInstance().toBuilder()
+                .setProjectId(projectId())
+                .setEmulatorHost("localhost:8084")
+                .setCredentials(new FirestoreOptions.EmulatorCredentials())
+                .build();
+
+        return firestoreOptions.getService();
+    }
 
 	/*
 	 * You can use this builder to create a Spring WebClient instance which can be used to make REST-calls.
