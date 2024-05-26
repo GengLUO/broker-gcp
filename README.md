@@ -1,10 +1,13 @@
 ## Setup and Execution
 ### Step 1: Run the Emulator Locally
+
     ```bash
     ./firebase-tools-linux emulators:start --project demo-distributed-systems-kul
     ```
+    
     To change it to use the cloud, please change the index.js and the WebSecurityConfig
 ### Step 2: Start Spring application
+
     ```bash
     mvn spring-boot:run
     ```
