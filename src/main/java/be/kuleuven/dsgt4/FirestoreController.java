@@ -18,7 +18,7 @@ import java.util.concurrent.ExecutionException;
 
 // Add the controller.
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api") //指定了这个控制器处理的URL前缀为/api
 class FirestoreController {
 
     @Autowired

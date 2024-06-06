@@ -91,6 +91,9 @@ function wireGuiUpEvents() {
         userCredential.user.getIdToken().then((token) => {
           console.log("ID Token:", token);
           // You can use this token to make authenticated requests
+
+          // Redirect to the dashboard page
+          window.location.href = 'dashboard.html';
         });
       })
       .catch(function (error) {
@@ -166,6 +169,8 @@ function wireUpAuthChange() {
       var token = idTokenResult.token;
       fetchData(token);
 
+      // Redirect to the dashboard page
+      window.location.href = 'dashboard.html';
     });
 
   });
