@@ -11,10 +11,10 @@ public class UserMessage {
 
 
 
-        private UUID id;
+        private UUID id; //UUID类型，用于唯一标识消息
         private LocalDateTime time;
         private String role;
-        private String customer;
+        private String customer; //String 类型，用于表示客户信息:email
 
         public UserMessage(UUID id, LocalDateTime time, String role, String customer) {
             this.id = id;
@@ -35,6 +35,7 @@ public class UserMessage {
             return this.customer;
         }
 
+        //将 UserMessage 对象转换为 Map<String, Object> 格式，便于存储或传输
         public Map<String, Object> toDoc(){
             Map<String, Object> data = new HashMap<>();
             data.put("id", this.id.toString());
@@ -46,6 +47,7 @@ public class UserMessage {
             return data;
         }
 
+        //从 Map<String, Object> 文档创建 UserMessage 对象
         public static UserMessage fromDoc(Map<String, Object> doc) {
             return new UserMessage(
                     UUID.fromString((String) doc.get("id")),
