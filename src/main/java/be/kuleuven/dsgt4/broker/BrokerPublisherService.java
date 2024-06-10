@@ -15,8 +15,11 @@ import java.util.concurrent.TimeUnit;
 public class BrokerPublisherService {
 
 //    TODO: these can be env variables
-    private static final String PROJECT_ID = "your-project-id";
+    private static final String PROJECT_ID = "broker-da44b";
     private static final String TOPIC_ID = "your-topic-id";
+    //For now, we have:
+//    1. hotel-booking-requests
+//    2. flight-booking-requests
 
     //official example code for publish messages
     public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {
