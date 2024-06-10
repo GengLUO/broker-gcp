@@ -12,7 +12,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
 @Service
-public class BrokerService {
+public class BrokerPublisherService {
 
 //    TODO: these can be env variables
     private static final String PROJECT_ID = "your-project-id";
