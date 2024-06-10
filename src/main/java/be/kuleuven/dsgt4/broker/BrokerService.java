@@ -16,11 +16,35 @@ public class BrokerService {
 
 //    TODO: these can be env variables
     private static final String PROJECT_ID = "your-project-id";
-//    TODO:change the topic to be an incoming param
     private static final String TOPIC_ID = "your-topic-id";
 
-    public String publishMessage(String message) throws IOException, ExecutionException, InterruptedException {
+    //official example code for publish messages
+    public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, TOPIC_ID);
+        Publisher publisher = null;
+        try {
+            // Create a publisher instance with default settings bound to the topic
+            publisher = Publisher.newBuilder(topicName).build();
+            ByteString data = ByteString.copyFromUtf8(message);
+            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
+
+            // Once published, returns a server-assigned message id (unique within the topic)
+            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+            String messageId = messageIdFuture.get();
+            System.out.println("Published message ID: " + messageId);
+            return messageId;
+        } finally {
+            if (publisher != null) {
+                // When finished with the publisher, shutdown to free up resources.
+                publisher.shutdown();
+                publisher.awaitTermination(1, TimeUnit.MINUTES);
+            }
+        }
+    }
+
+    //use a param topicId
+    public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
+        TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
         try {
             // Create a publisher instance with default settings bound to the topic
