@@ -9,7 +9,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/bookings")
+//@RequestMapping("/api/bookings")
+@RequestMapping("/bookings")
 //TODO:
 // HATEOAS -> use WebMvcLinkBuilder. (not CollectionModel) -> DONE
 // Integration with Authentication -> is it needed? is so, check firestore controller for usage example
@@ -24,6 +25,16 @@ public class BookingController {
         this.publisherService = publisherService;
     }
 
+    // Dummy endpoint for testing message publishing
+    @GetMapping("/test-publish/{topic}")
+    public ResponseEntity<?> testPublish(@PathVariable String topic) {
+        try {
+            return ResponseEntity.ok("Test message published successfully. topic: " + topic);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
+        }
+    }
+
     // Post a new hotel booking
 //    @PostMapping("/hotels")
 //    public ResponseEntity<?> createHotelBooking(@RequestBody String bookingDetails) {
@@ -35,6 +46,7 @@ public class BookingController {
 //        }
 //    }
 // HATEOAS:
+//    TODO: there is something wrong with the entity model, so it can now pulish it, but the rest will give error
     @PostMapping("/hotels")
     public ResponseEntity<?> createHotelBooking(@RequestBody String bookingDetails) {
         try {
