@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api")
+@RequestMapping("/api/bookings")
 //TODO:
 // HATEOAS,
 // Integration with Authentication,
@@ -26,7 +26,7 @@ public class BookingController {
     }
 
     // Post a new hotel booking
-    @PostMapping("/bookings/hotels")
+    @PostMapping("/hotels")
     public ResponseEntity<?> createHotelBooking(@RequestBody String bookingDetails) {
         try {
             String messageId = publisherService.publishMessage("hotel-booking-requests", bookingDetails);
@@ -37,7 +37,7 @@ public class BookingController {
     }
 
     // Post a new flight booking
-    @PostMapping("/bookings/flights")
+    @PostMapping("/flights")
     public ResponseEntity<?> createFlightBooking(@RequestBody String bookingDetails) {
         try {
             String messageId = publisherService.publishMessage("flight-booking-requests", bookingDetails);
