@@ -2,9 +2,9 @@ package be.kuleuven.dsgt4.broker;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.*;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
@@ -20,6 +20,7 @@ public class BrokerPublisherService {
     //For now, we have:
 //    1. hotel-booking-requests
 //    2. flight-booking-requests
+    private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
 
     //official example code for publish messages
     public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {
@@ -36,6 +37,7 @@ public class BrokerPublisherService {
             String messageId = messageIdFuture.get();
             System.out.println("Published message ID: " + messageId);
             return messageId;
+//            TODO: use this ? https://cloud.google.com/pubsub/docs/publisher
         } finally {
             if (publisher != null) {
                 // When finished with the publisher, shutdown to free up resources.
@@ -66,6 +68,25 @@ public class BrokerPublisherService {
                 publisher.shutdown();
                 publisher.awaitTermination(1, TimeUnit.MINUTES);
             }
+        }
+    }
+
+    //https://console.cloud.google.com/cloudpubsub/subscription/list?project=broker-da44b&supportedpurview=project
+    //similar to above
+    public static void createPushSubscriptionExample(
+            String projectId, String subscriptionId, String topicId, String pushEndpoint)
+            throws IOException {
+        try (SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create()) {
+            TopicName topicName = TopicName.of(projectId, topicId);
+            SubscriptionName subscriptionName = SubscriptionName.of(projectId, subscriptionId);
+            PushConfig pushConfig = PushConfig.newBuilder().setPushEndpoint(pushEndpoint).build();
+
+            // Create a push subscription with default acknowledgement deadline of 10 seconds.
+            // Messages not successfully acknowledged within 10 seconds will get resent by the server.
+//            TODO: adjust the ack time
+            Subscription subscription =
+                    subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
+            System.out.println("Created push subscription: " + subscription.getName());
         }
     }
 }
