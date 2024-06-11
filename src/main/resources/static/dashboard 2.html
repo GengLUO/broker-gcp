@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Dashboard - DSGT 4 Broker</title>
+    <link rel="stylesheet" href="index.css" />
+</head>
+<body>
+<script type="module" src="dashboard.js"></script>
+
+<header>
+    <div id="headerdiv" class="header-menu">
+        <a href="/">
+            <div class="header-title">DSGT4 Broker</div>
+        </a>
+        <div class="header-name" id="namediv"></div>
+        <span id="btnLogout" class="header-icon">
+            <img src="/images/logout.svg" height="24" />
+        </span>
+    </div>
+</header>
+
+<div class="page" id="productPage">
+    <div class="product-block" id="flightsBlock">
+        <h2>Flights</h2>
+        <div class="product" id="flight1">
+            <p>Flight 1 - Dummy Data</p>
+            <button class="reserve-button" onclick="reserve('flight1')">Reserve</button>
+        </div>
+        <div class="product" id="flight2">
+            <p>Flight 2 - Dummy Data</p>
+            <button class="reserve-button" onclick="reserve('flight2')">Reserve</button>
+        </div>
+        <a href="/flights" class="show-all">Show All</a>
+    </div>
+    <div class="product-block" id="hotelsBlock">
+        <h2>Hotels</h2>
+        <div class="product" id="hotel1">
+            <p>Hotel 1 - Dummy Data</p>
+            <button class="reserve-button" onclick="reserve('hotel1')">Reserve</button>
+        </div>
+        <div class="product" id="hotel2">
+            <p>Hotel 2 - Dummy Data</p>
+            <button class="reserve-button" onclick="reserve('hotel2')">Reserve</button>
+        </div>
+        <a href="/hotels" class="show-all">Show All</a>
+    </div>
+</div>
+
+</body>
+</html>
