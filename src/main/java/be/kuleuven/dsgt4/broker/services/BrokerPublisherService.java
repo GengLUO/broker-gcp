@@ -3,13 +3,14 @@ package be.kuleuven.dsgt4.broker.services;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
-import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.*;
+import com.google.protobuf.ByteString;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+
 
 @Service
 public class BrokerPublisherService {
@@ -21,6 +22,10 @@ public class BrokerPublisherService {
 //    1. hotel-booking-requests
 //    2. flight-booking-requests
     private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
+
+    // Dummy topic IDs for now
+    private static final String TOPIC_ID_HOTEL = "hotel-booking-requests";
+    private static final String TOPIC_ID_FLIGHT = "flight-booking-requests";
 
     //official example code for publish messages
     public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {

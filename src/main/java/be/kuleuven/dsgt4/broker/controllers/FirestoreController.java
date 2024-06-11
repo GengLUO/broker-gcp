@@ -1,125 +1,53 @@
 package be.kuleuven.dsgt4.broker.controllers;
 
-import be.kuleuven.dsgt4.User;
-import be.kuleuven.dsgt4.auth.WebSecurityConfig;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 
-
 import java.util.*;
 import java.util.concurrent.ExecutionException;
+
+import be.kuleuven.dsgt4.auth.WebSecurityConfig;
+import be.kuleuven.dsgt4.broker.domain.User;
+import be.kuleuven.dsgt4.broker.domain.Customer;
+import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 // Add the controller.
 @RestController
 @RequestMapping("/api") //指定了这个控制器处理的URL前缀为/api
 class FirestoreController {
 
+    private static final Logger logger = LoggerFactory.getLogger(FirestoreController.class);
+
     @Autowired
     private Firestore firestore;
 
+    @Autowired
+    private TransactionCoordinatorService transactionCoordinatorService;
+
     @GetMapping("/hello")
     public String hello() {
-        System.out.println("Inside hello");
-        return "hello world!";
+        logger.info("Received request at /hello");
+        return "Welcome to Travel Broker API!";
     }
 
     @GetMapping("/whoami")
     public User whoami() throws InterruptedException, ExecutionException {
         var user = WebSecurityConfig.getUser();
         if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+        logger.info("Returning user details: {}", user.getEmail());
         return user;
     }
 
-    /** API Endpoint */
-    /** Basic CRUD Operations */
-    @PostMapping("/add")
-    public ApiFuture<WriteResult> addDocument(@RequestBody Map<String, Object> data) {
-        DocumentReference docRef = firestore.collection("testCollection").document();
-        return docRef.set(data);
-    }
-
-    @GetMapping("/get/{id}")
-    public ApiFuture<DocumentSnapshot> getDocument(@PathVariable String id) {
-        DocumentReference docRef = firestore.collection("testCollection").document(id);
-        return docRef.get();
-    }
-
-    @PutMapping("/update/{id}")
-    public ApiFuture<WriteResult> updateDocument(@PathVariable String id, @RequestBody Map<String, Object> data) {
-        DocumentReference docRef = firestore.collection("testCollection").document(id);
-        return docRef.update(data);
-    }
-
-    @DeleteMapping("/delete/{id}")
-    public ApiFuture<WriteResult> deleteDocument(@PathVariable String id) {
-        DocumentReference docRef = firestore.collection("testCollection").document(id);
-        return docRef.delete();
-    }
-
-    /** Specified Methods Using ApiFuture */
-    @PostMapping("/addTravelPackage")
-    public ApiFuture<WriteResult> addTravelPackage(@RequestBody Map<String, Object> data) {
-        DocumentReference docRef = firestore.collection("travelPackages").document();
-        return docRef.set(data);
-    }
-
-    @GetMapping("/getTravelPackages/{customerId}")
-    public ApiFuture<QuerySnapshot> getTravelPackagesByCustomer(@PathVariable String customerId) {
-        return firestore.collection("travelPackages")
-                        .whereEqualTo("customerId", customerId)
-                        .get();
-    }
-
-    @PostMapping("/bookTravelPackage/{packageId}")
-    public ApiFuture<String> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
-        Firestore db = firestore;
-    
-        return db.runTransaction(transaction -> {
-            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
-    
-            if (!packageSnapshot.exists()) {
-                throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
-            }
-    
-            // Extracting details from packageSnapshot
-            List<String> flightIds = (List<String>) packageSnapshot.get("flightIds");
-            List<String> hotelIds = (List<String>) packageSnapshot.get("hotelIds");
-    
-            // Updating flights
-            for (String flightId : flightIds) {
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "booked", true);
-            }
-    
-            // Updating hotels
-            for (String hotelId : hotelIds) {
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
-            }
-    
-            return "Travel Package " + packageId + " booked successfully.";
-        });
-    }
-
-    @PutMapping("/updateTravelPackage/{id}")
-    public ApiFuture<WriteResult> updateTravelPackage(@PathVariable String id, @RequestBody Map<String, Object> data) {
-        DocumentReference docRef = firestore.collection("travelPackages").document(id);
-        return docRef.update(data);
-    }
-
-    @DeleteMapping("/deleteTravelPackage/{id}")
-    public ApiFuture<WriteResult> deleteTravelPackage(@PathVariable String id) {
-        DocumentReference docRef = firestore.collection("travelPackages").document(id);
-        return docRef.delete();
-    }
-
-    /** User specific methods */
+    /** Broker User Profiles Methods */
     @PostMapping("/updateUserProfile/{userId}")
     public ApiFuture<String> updateUserProfile(@PathVariable String userId, @RequestBody Map<String, Object> newDetails) {
+        logger.info("Updating user profile for userId: {}", userId);
         return firestore.runTransaction(transaction -> {
             DocumentReference userRef = firestore.collection("users").document(userId);
             DocumentSnapshot userSnapshot = transaction.get(userRef).get();
@@ -128,13 +56,75 @@ class FirestoreController {
                 throw new IllegalArgumentException("User with ID " + userId + " not found");
             }
 
-            transaction.update(userRef, "email", newDetails.get("email"));
+            if (newDetails.containsKey("email")) {
+                transaction.update(userRef, "email", newDetails.get("email"));
+            }
 
-            DocumentReference settingsRef = firestore.collection("userSettings").document(userId);
-            transaction.update(settingsRef, "preferences", newDetails.get("preferences"));
+            if (newDetails.containsKey("role")) {
+                transaction.update(userRef, "role", newDetails.get("role"));
+            }
 
             return "User profile for " + userId + " updated successfully.";
         });
+    }
+
+    @PostMapping("/addCustomer/{userId}")
+    public ApiFuture<WriteResult> addCustomer(@PathVariable String userId, @RequestBody Customer customer) {
+        logger.info("Adding customer for userId: {}", userId);
+        DocumentReference docRef = firestore.collection("users").document(userId).collection("customers").document();
+        return docRef.set(customer);
+    }
+
+    @GetMapping("/getCustomers/{userId}")
+    public ApiFuture<QuerySnapshot> getCustomers(@PathVariable String userId) {
+        logger.info("Fetching customers for userId: {}", userId);
+        return firestore.collection("users").document(userId).collection("customers").get();
+    }
+
+    @PutMapping("/updateCustomer/{userId}/{customerId}")
+    public ApiFuture<WriteResult> updateCustomer(@PathVariable String userId, @PathVariable String customerId, @RequestBody Map<String, Object> updates) {
+        logger.info("Updating customer for userId: {}, customerId: {}", userId, customerId);
+        DocumentReference docRef = firestore.collection("users").document(userId).collection("customers").document(customerId);
+        return docRef.update(updates);
+    }
+
+    @DeleteMapping("/deleteCustomer/{userId}/{customerId}")
+    public ApiFuture<WriteResult> deleteCustomer(@PathVariable String userId, @PathVariable String customerId) {
+        logger.info("Deleting customer for userId: {}, customerId: {}", userId, customerId);
+        DocumentReference docRef = firestore.collection("users").document(userId).collection("customers").document(customerId);
+        return docRef.delete();
+    }
+
+    /** Read-only operation without involvement of Participants Coordinations */
+    @GetMapping("/getTravelPackages/{customerId}")
+    public ApiFuture<QuerySnapshot> getTravelPackagesByCustomer(@PathVariable String customerId) {
+        logger.info("Fetching travel packages for customerId: {}", customerId);
+        return firestore.collection("travelPackages").whereEqualTo("customerId", customerId).get();
+    }
+
+    /** Trvael Packages Methods Using Transaction Coordinator */
+    @PostMapping("/addTravelPackage")
+    public ApiFuture<WriteResult> addTravelPackage(@RequestBody Map<String, Object> data) {
+        logger.info("Adding new travel package");
+        return transactionCoordinatorService.addTravelPackage(data);
+    }
+
+    @PostMapping("/bookTravelPackage/{packageId}")
+    public ApiFuture<String> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
+        logger.info("Booking travel package with packageId: {}", packageId);
+        return transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
+    }
+
+    @PutMapping("/updateTravelPackage/{id}")
+    public ApiFuture<WriteResult> updateTravelPackage(@PathVariable String id, @RequestBody Map<String, Object> data) {
+        logger.info("Updating travel package with id: {}", id);
+        return transactionCoordinatorService.updateTravelPackage(id, data);
+    }
+
+    @DeleteMapping("/deleteTravelPackage/{id}")
+    public ApiFuture<WriteResult> deleteTravelPackage(@PathVariable String id) {
+        logger.info("Deleting travel package with id: {}", id);
+        return transactionCoordinatorService.deleteTravelPackage(id);
     }
 
 }
