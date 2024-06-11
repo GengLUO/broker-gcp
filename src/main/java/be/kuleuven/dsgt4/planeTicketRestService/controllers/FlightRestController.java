@@ -52,4 +52,22 @@ public class FlightRestController {
         boolean success = flightService.bookFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
+
+    @GetMapping("/available")
+    public ResponseEntity<Boolean> isFlightAvailable(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean available = flightService.isFlightAvailable(flightId, seats);
+        return ResponseEntity.ok(available);
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<String> cancelFlight(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean success = flightService.cancelFlight(flightId, seats);
+        return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
 }

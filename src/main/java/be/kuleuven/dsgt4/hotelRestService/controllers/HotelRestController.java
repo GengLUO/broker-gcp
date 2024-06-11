@@ -52,4 +52,22 @@ public class HotelRestController {
         boolean success = hotelService.bookHotel(hotelId, rooms);
         return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
+
+    @GetMapping("/available")
+    public ResponseEntity<Boolean> isHotelAvailable(@RequestParam Long hotelId, @RequestParam int rooms, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean available = hotelService.isHotelAvailable(hotelId, rooms);
+        return ResponseEntity.ok(available);
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<String> cancelHotel(@RequestParam Long hotelId, @RequestParam int rooms, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean success = hotelService.cancelHotel(hotelId, rooms);
+        return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
 }
