@@ -1,19 +1,15 @@
 package be.kuleuven.dsgt4;
 
-import org.springframework.boot.autoconfigure.EnableAutoConfiguration;
 import be.kuleuven.dsgt4.auth.WebSecurityConfig;
-import com.google.cloud.firestore.DocumentReference;
-import com.google.cloud.firestore.DocumentSnapshot;
-import com.google.cloud.firestore.Firestore;
-import com.google.cloud.firestore.WriteResult;
+import com.google.api.core.ApiFuture;
+import com.google.cloud.firestore.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 
+
 import java.time.LocalDateTime;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 
 // Add the controller.
@@ -42,40 +38,108 @@ class FirestoreController {
         return user;
     }
 
-    // Add a document to Firestore
+    /** API Endpoint */
+    /** Basic CRUD Operations */
     @PostMapping("/add")
-    public String addDocument(@RequestBody Map<String, Object> data) throws ExecutionException, InterruptedException {
+    public ApiFuture<WriteResult> addDocument(@RequestBody Map<String, Object> data) {
         DocumentReference docRef = firestore.collection("testCollection").document();
-        WriteResult result = docRef.set(data).get();
-        return "Document added with ID: " + docRef.getId() + " at time: " + result.getUpdateTime();
+        return docRef.set(data);
     }
 
-    // Retrieve a document from Firestore
     @GetMapping("/get/{id}")
-    public Map<String, Object> getDocument(@PathVariable String id) throws ExecutionException, InterruptedException {
+    public ApiFuture<DocumentSnapshot> getDocument(@PathVariable String id) {
         DocumentReference docRef = firestore.collection("testCollection").document(id);
-        DocumentSnapshot document = docRef.get().get();
-
-        if (document.exists()) {
-            return document.getData();
-        } else {
-            throw new RuntimeException("Document with ID " + id + " not found");
-        }
+        return docRef.get();
     }
 
-    // Update a document in Firestore
     @PutMapping("/update/{id}")
-    public String updateDocument(@PathVariable String id, @RequestBody Map<String, Object> data) throws ExecutionException, InterruptedException {
+    public ApiFuture<WriteResult> updateDocument(@PathVariable String id, @RequestBody Map<String, Object> data) {
         DocumentReference docRef = firestore.collection("testCollection").document(id);
-        WriteResult result = docRef.update(data).get();
-        return "Document with ID " + id + " updated at time: " + result.getUpdateTime();
+        return docRef.update(data);
     }
 
-    // Delete a document from Firestore
     @DeleteMapping("/delete/{id}")
-    public String deleteDocument(@PathVariable String id) throws ExecutionException, InterruptedException {
+    public ApiFuture<WriteResult> deleteDocument(@PathVariable String id) {
         DocumentReference docRef = firestore.collection("testCollection").document(id);
-        WriteResult result = docRef.delete().get();
-        return "Document with ID " + id + " deleted at time: " + result.getUpdateTime();
+        return docRef.delete();
     }
+
+    /** Specified Methods Using ApiFuture */
+    @PostMapping("/addTravelPackage")
+    public ApiFuture<WriteResult> addTravelPackage(@RequestBody Map<String, Object> data) {
+        DocumentReference docRef = firestore.collection("travelPackages").document();
+        return docRef.set(data);
+    }
+
+    @GetMapping("/getTravelPackages/{customerId}")
+    public ApiFuture<QuerySnapshot> getTravelPackagesByCustomer(@PathVariable String customerId) {
+        return firestore.collection("travelPackages")
+                        .whereEqualTo("customerId", customerId)
+                        .get();
+    }
+
+    @PostMapping("/bookTravelPackage/{packageId}")
+    public ApiFuture<String> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
+        Firestore db = firestore;
+    
+        return db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+    
+            if (!packageSnapshot.exists()) {
+                throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
+            }
+    
+            // Extracting details from packageSnapshot
+            List<String> flightIds = (List<String>) packageSnapshot.get("flightIds");
+            List<String> hotelIds = (List<String>) packageSnapshot.get("hotelIds");
+    
+            // Updating flights
+            for (String flightId : flightIds) {
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "booked", true);
+            }
+    
+            // Updating hotels
+            for (String hotelId : hotelIds) {
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
+            }
+    
+            return "Travel Package " + packageId + " booked successfully.";
+        });
+    }
+
+    @PutMapping("/updateTravelPackage/{id}")
+    public ApiFuture<WriteResult> updateTravelPackage(@PathVariable String id, @RequestBody Map<String, Object> data) {
+        DocumentReference docRef = firestore.collection("travelPackages").document(id);
+        return docRef.update(data);
+    }
+
+    @DeleteMapping("/deleteTravelPackage/{id}")
+    public ApiFuture<WriteResult> deleteTravelPackage(@PathVariable String id) {
+        DocumentReference docRef = firestore.collection("travelPackages").document(id);
+        return docRef.delete();
+    }
+
+    /** User specific methods */
+    @PostMapping("/updateUserProfile/{userId}")
+    public ApiFuture<String> updateUserProfile(@PathVariable String userId, @RequestBody Map<String, Object> newDetails) {
+        return firestore.runTransaction(transaction -> {
+            DocumentReference userRef = firestore.collection("users").document(userId);
+            DocumentSnapshot userSnapshot = transaction.get(userRef).get();
+
+            if (!userSnapshot.exists()) {
+                throw new IllegalArgumentException("User with ID " + userId + " not found");
+            }
+
+            transaction.update(userRef, "email", newDetails.get("email"));
+
+            DocumentReference settingsRef = firestore.collection("userSettings").document(userId);
+            transaction.update(settingsRef, "preferences", newDetails.get("preferences"));
+
+            return "User profile for " + userId + " updated successfully.";
+        });
+    }
+
 }

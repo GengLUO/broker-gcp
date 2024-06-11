@@ -16,6 +16,8 @@ public class UserMessage {
         private String role;
         private String customer; //String 类型，用于表示客户信息:email
 
+
+        
         public UserMessage(UUID id, LocalDateTime time, String role, String customer) {
             this.id = id;
             this.time = time;
