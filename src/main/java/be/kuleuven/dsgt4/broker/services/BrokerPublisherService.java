@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.broker;
+package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;

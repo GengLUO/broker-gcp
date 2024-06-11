@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.controller;
+package be.kuleuven.dsgt4.broker.controllers;
 
 
 import org.springframework.stereotype.Controller;

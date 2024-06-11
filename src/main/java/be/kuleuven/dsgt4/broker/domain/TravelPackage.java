@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.broker;
+package be.kuleuven.dsgt4.broker.domain;
 
 import java.util.ArrayList;
 import java.util.List;

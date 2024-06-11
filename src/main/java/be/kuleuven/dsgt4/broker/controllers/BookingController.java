@@ -1,12 +1,13 @@
-package be.kuleuven.dsgt4.controller;
+package be.kuleuven.dsgt4.broker.controllers;
 
-import be.kuleuven.dsgt4.broker.BrokerPublisherService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import be.kuleuven.dsgt4.broker.services.BrokerPublisherService;
 
 @RestController
 //@RequestMapping("/api/bookings")
