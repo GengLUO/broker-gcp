@@ -2,7 +2,7 @@ package be.kuleuven.dsgt4.hotelRestService.controllers;
 
 
 import be.kuleuven.dsgt4.hotelRestService.domain.Hotel;
-import be.kuleuven.dsgt4.hotelRestService.services.HotelService;
+import be.kuleuven.dsgt4.hotelRestService.domain.HotelRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -13,13 +13,14 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/hotels")
 public class HotelRestController {
 
     @Autowired
-    private HotelService hotelService;
+    private HotelRepository hotelRepository;
 
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
 
@@ -28,7 +29,7 @@ public class HotelRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        List<EntityModel<Hotel>> hotels = hotelService.getAllHotels().stream()
+        List<EntityModel<Hotel>> hotels = hotelRepository.getAllHotels().stream()
                 .map(hotel -> EntityModel.of(hotel,
                         WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotel(hotel.getId(), key)).withSelfRel()))
                 .collect(Collectors.toList());
@@ -40,16 +41,23 @@ public class HotelRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        Hotel hotel = hotelService.getHotelById(id);
-        return ResponseEntity.ok(EntityModel.of(hotel, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotel(id, key)).withSelfRel()));
+        Optional<Hotel> optionalHotel = hotelRepository.getHotelById(id);
+        if (optionalHotel.isPresent()) {
+            Hotel hotel = optionalHotel.get();
+            return ResponseEntity.ok(EntityModel.of(hotel,
+                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotel(id, key)).withSelfRel()));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
+
 
     @PostMapping("/book")
     public ResponseEntity<String> bookHotel(@RequestParam Long hotelId, @RequestParam int rooms, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = hotelService.bookHotel(hotelId, rooms);
+        boolean success = hotelRepository.bookHotel(hotelId, rooms);
         return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
 
@@ -58,7 +66,7 @@ public class HotelRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean available = hotelService.isHotelAvailable(hotelId, rooms);
+        boolean available = hotelRepository.isHotelAvailable(hotelId, rooms);
         return ResponseEntity.ok(available);
     }
 
@@ -67,7 +75,7 @@ public class HotelRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = hotelService.cancelHotel(hotelId, rooms);
+        boolean success = hotelRepository.cancelHotel(hotelId, rooms);
         return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
     }
 }
