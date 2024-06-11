@@ -6,20 +6,18 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.*;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
 import be.kuleuven.dsgt4.auth.WebSecurityConfig;
-import be.kuleuven.dsgt4.broker.domain.User;
 import be.kuleuven.dsgt4.broker.domain.Customer;
+import be.kuleuven.dsgt4.broker.domain.User;
 import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-// Add the controller.
 @RestController
-@RequestMapping("/api") //指定了这个控制器处理的URL前缀为/api
+@RequestMapping("/api")
 class FirestoreController {
 
     private static final Logger logger = LoggerFactory.getLogger(FirestoreController.class);
@@ -44,7 +42,6 @@ class FirestoreController {
         return user;
     }
 
-    /** Broker User Profiles Methods */
     @PostMapping("/updateUserProfile/{userId}")
     public ApiFuture<String> updateUserProfile(@PathVariable String userId, @RequestBody Map<String, Object> newDetails) {
         logger.info("Updating user profile for userId: {}", userId);
@@ -95,14 +92,12 @@ class FirestoreController {
         return docRef.delete();
     }
 
-    /** Read-only operation without involvement of Participants Coordinations */
     @GetMapping("/getTravelPackages/{customerId}")
     public ApiFuture<QuerySnapshot> getTravelPackagesByCustomer(@PathVariable String customerId) {
         logger.info("Fetching travel packages for customerId: {}", customerId);
         return firestore.collection("travelPackages").whereEqualTo("customerId", customerId).get();
     }
 
-    /** Trvael Packages Methods Using Transaction Coordinator */
     @PostMapping("/addTravelPackage")
     public ApiFuture<WriteResult> addTravelPackage(@RequestBody Map<String, Object> data) {
         logger.info("Adding new travel package");

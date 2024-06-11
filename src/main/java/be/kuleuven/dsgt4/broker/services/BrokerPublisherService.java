@@ -23,10 +23,6 @@ public class BrokerPublisherService {
 //    2. flight-booking-requests
     private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
 
-    // Dummy topic IDs for now
-    private static final String TOPIC_ID_HOTEL = "hotel-booking-requests";
-    private static final String TOPIC_ID_FLIGHT = "flight-booking-requests";
-
     //official example code for publish messages
     public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, TOPIC_ID);
