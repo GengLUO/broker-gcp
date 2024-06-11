@@ -28,5 +28,12 @@ public class HotelService {
         return hotelRepository.bookHotel(hotelId, rooms);
     }
 
+    public boolean isHotelAvailable(Long hotelId, int rooms) {
+        return hotelRepository.isHotelAvailable(hotelId, rooms);
+    }
+
+    public boolean cancelHotel(Long hotelId, int rooms) {
+        return hotelRepository.cancelHotel(hotelId, rooms);
+    }
     // You can add more methods as needed, such as adding, updating, or deleting hotels.
 }
