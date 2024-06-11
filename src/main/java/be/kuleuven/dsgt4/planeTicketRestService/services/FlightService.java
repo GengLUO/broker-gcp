@@ -27,5 +27,13 @@ public class FlightService {
         return flightRepository.bookFlight(flightId, seats);
     }
 
+    public boolean isFlightAvailable(Long flightId, int seats) {
+        return flightRepository.isFlightAvailable(flightId, seats);
+    }
+
+    public boolean cancelFlight(Long flightId, int seats) {
+        return flightRepository.cancelFlight(flightId, seats);
+    }
+
     // You can add more methods as needed, such as adding, updating, or deleting flights.
 }
