@@ -1,5 +1,6 @@
-package be.kuleuven.dsgt4;
+package be.kuleuven.dsgt4.broker.controllers;
 
+import be.kuleuven.dsgt4.User;
 import be.kuleuven.dsgt4.auth.WebSecurityConfig;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
@@ -8,7 +9,6 @@ import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 
 
-import java.time.LocalDateTime;
 import java.util.*;
 import java.util.concurrent.ExecutionException;
 
