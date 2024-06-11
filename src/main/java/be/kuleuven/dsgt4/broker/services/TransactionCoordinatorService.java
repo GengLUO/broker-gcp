@@ -2,13 +2,10 @@ package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +61,12 @@ public class TransactionCoordinatorService {
             
             return "Travel Package " + packageId + " booked successfully.";
         });
+    }
+
+    public void processBookingResponse(String message) {
+        // Implement the logic to process the booking response message here
+        logger.info("Processing booking response: {}", message);
+        // You can parse the message and perform necessary actions based on the message content
     }
 
     public ApiFuture<WriteResult> updateTravelPackage(String id, Map<String, Object> data) {
