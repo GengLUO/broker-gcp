@@ -30,11 +30,6 @@ class FirestoreController {
     public User whoami() throws InterruptedException, ExecutionException {
         var user = WebSecurityConfig.getUser();
         if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
-
-        UUID buuid = UUID.randomUUID();
-        UserMessage b = new UserMessage(buuid, LocalDateTime.now(), user.getRole(), user.getEmail());
-        this.firestore.collection("usermessages").document(b.getId().toString()).set(b.toDoc()).get();
-
         return user;
     }
 
