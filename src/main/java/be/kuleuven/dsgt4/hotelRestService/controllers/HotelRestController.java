@@ -1,6 +1,5 @@
 package be.kuleuven.dsgt4.hotelRestService.controllers;
 
-
 import be.kuleuven.dsgt4.hotelRestService.domain.Hotel;
 import be.kuleuven.dsgt4.hotelRestService.services.HotelService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -12,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @RestController
@@ -69,5 +69,12 @@ public class HotelRestController {
         }
         boolean success = hotelService.cancelHotel(hotelId, rooms);
         return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
+
+    @PostMapping("/pubsub/push")
+    public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
+        // Process the Pub/Sub message
+        hotelService.processBookingRequest(message);
+        return ResponseEntity.ok("Message processed");
     }
 }

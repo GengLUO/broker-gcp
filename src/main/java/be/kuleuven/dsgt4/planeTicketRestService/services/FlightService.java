@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
+import java.util.Map;
 
 @Service
 public class FlightService {
@@ -35,5 +36,16 @@ public class FlightService {
         return flightRepository.cancelFlight(flightId, seats);
     }
 
-    // You can add more methods as needed, such as adding, updating, or deleting flights.
+    public void processBookingRequest(Map<String, Object> message) {
+        // Extract booking details from the Pub/Sub message
+        Long flightId = Long.parseLong(message.get("flightId").toString());
+        int seats = Integer.parseInt(message.get("seats").toString());
+        
+        // Book the flight
+        if (isFlightAvailable(flightId, seats)) {
+            bookFlight(flightId, seats);
+        } else {
+            throw new RuntimeException("Flight is not available");
+        }
+    }
 }

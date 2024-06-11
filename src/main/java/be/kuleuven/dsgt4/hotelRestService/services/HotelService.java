@@ -7,7 +7,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.util.Collection;
-import java.util.List;
+import java.util.Map;
 
 @Service
 public class HotelService {
@@ -35,5 +35,13 @@ public class HotelService {
     public boolean cancelHotel(Long hotelId, int rooms) {
         return hotelRepository.cancelHotel(hotelId, rooms);
     }
-    // You can add more methods as needed, such as adding, updating, or deleting hotels.
+
+    public void processBookingRequest(Map<String, Object> message) {
+        Long hotelId = ((Number) message.get("hotelId")).longValue();
+        int rooms = (int) message.get("rooms");
+        boolean success = bookHotel(hotelId, rooms);
+        if (!success) {
+            throw new RuntimeException("Booking failed for hotel ID: " + hotelId);
+        }
+    }
 }
