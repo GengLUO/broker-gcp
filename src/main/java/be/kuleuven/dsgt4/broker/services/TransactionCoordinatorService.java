@@ -2,18 +2,12 @@ package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
-import com.google.cloud.pubsub.v1.Publisher;
-import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.TopicName;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
-import java.util.*;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
+import java.util.List;
+import java.util.Map;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,36 +15,11 @@ import org.slf4j.LoggerFactory;
 @Service
 public class TransactionCoordinatorService {
 
-    /** Transaction Coordinator with 2PC and Transactional RPC */
     private static final Logger logger = LoggerFactory.getLogger(TransactionCoordinatorService.class);
 
     @Autowired
     private Firestore firestore;
 
-    // Simulated services for RAFT and PBFT
-    @Autowired
-    private RaftService raftService;
-
-    @Autowired
-    private PBFTService pbftService;
-
-    @Autowired
-    private BrokerPublisherService brokerPublisherService;
-
-    /** Hotel Booking between Travel Agency Publisher and Hotel Microservice Subscriber */
-    // Initiate hotel booking by publishing a message to the Pub/Sub topic
-    public String initiateHotelBooking(String bookingDetails) throws IOException, ExecutionException, InterruptedException {
-        return brokerPublisherService.publishMessage("hotel-booking-requests", bookingDetails);
-    }
-
-    /** Flght Booking between Travel Agency Publisher and Flight Microservice Subscriber */
-    // Initiate flight booking by publishing a message to the Pub/Sub topic
-    public String initiateFlightBooking(String bookingDetails) throws IOException, ExecutionException, InterruptedException {
-        return brokerPublisherService.publishMessage("flight-booking-requests", bookingDetails);
-    }
-
-
-    /** Travel Packages Booking between Client and Travel Agency */
     public ApiFuture<WriteResult> addTravelPackage(Map<String, Object> data) {
         logger.info("Adding travel package");
         Firestore db = firestore;
@@ -58,7 +27,7 @@ public class TransactionCoordinatorService {
         return db.runTransaction(transaction -> {
             DocumentReference docRef = db.collection("travelPackages").document();
             transaction.set(docRef, data);
-            return null;  // Transaction return type should be compatible
+            return null;
         });
     }
 
@@ -87,6 +56,12 @@ public class TransactionCoordinatorService {
                 transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
             }
 
+            // Here you should update Firestore with booking details under the user's document.
+            // Assuming bookingDetails contains userId and other necessary details.
+            String userId = (String) bookingDetails.get("userId");
+            DocumentReference userRef = db.collection("users").document(userId).collection("bookings").document();
+            transaction.set(userRef, bookingDetails);
+            
             return "Travel Package " + packageId + " booked successfully.";
         });
     }
@@ -109,7 +84,7 @@ public class TransactionCoordinatorService {
 
             transaction.update(docRef, data);
             return null;
-        });  
+        });
     }
 
     public ApiFuture<WriteResult> deleteTravelPackage(String id) {
@@ -128,6 +103,4 @@ public class TransactionCoordinatorService {
             return null;
         });
     }
-
 }
-
