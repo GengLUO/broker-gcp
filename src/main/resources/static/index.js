@@ -84,6 +84,9 @@ function wireGuiUpEvents() {
   signInButton.addEventListener("click", function () {
     // Sign in the user using Firebase's signInWithEmailAndPassword method
 
+      console.log("Sign in button clicked");
+      console.log("Email:", email.value);
+      console.log("Password:", password.value);
     signInWithEmailAndPassword(getAuth(), email.value, password.value)
       .then(function (userCredential) {
         console.log("signed in");
