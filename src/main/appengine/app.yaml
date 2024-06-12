@@ -6,6 +6,8 @@ inbound_services:
   - warmup
 
 handlers:
+  - url: /static
+    static_dir: target/classes/static
   - url: /.*
     secure: always
     script: auto
