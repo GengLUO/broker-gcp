@@ -19,5 +19,4 @@ automatic_scaling:
   target_cpu_utilization: 0.9
   target_throughput_utilization: 0.9
 
-env_variables:
-  GOOGLE_APPLICATION_CREDENTIALS: "/home/dapp/Desktop/final/broker-gcp/src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json"
+
