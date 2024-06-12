@@ -48,7 +48,7 @@ public class BrokerController {
         }
     }
 
-    @DeleteMapping("/{userId}")
+    @DeleteMapping("/cancel/{userId}")
     public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId) {
         boolean success = publisherService.cancelTravelPackage(userId);
         if (success) {
@@ -82,7 +82,7 @@ public class BrokerController {
         return ResponseEntity.ok(travelPackage);
     }
 
-    @DeleteMapping("/{userId}")
+    @DeleteMapping("/clear/{userId}")
     public ResponseEntity<?> clearTravelPackage(@PathVariable String userId) {
         boolean success = publisherService.clearTravelPackage(userId);
         if (success) {
