@@ -23,7 +23,7 @@
 		<project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
 	</properties>
 	
-	    <dependencyManagement>
+	<dependencyManagement>
         <dependencies>
 			<dependency>
 				<groupId>org.thymeleaf</groupId>
@@ -63,7 +63,7 @@
             </dependency>
         </dependencies>
     </dependencyManagement>
-    
+
 	<dependencies>
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -161,6 +161,22 @@
             <scope>test</scope>
         </dependency>
 
+		<!-- HashiCorp RAFT -->
+		<dependency>
+			<groupId>io.atomix</groupId>
+			<artifactId>atomix</artifactId>
+			<version>3.0.9</version>
+		</dependency>
+	    <dependency>
+			<groupId>io.atomix</groupId>
+			<artifactId>atomix</artifactId>
+			<version>3.0.9</version>
+		</dependency>
+		<dependency>
+			<groupId>io.atomix</groupId>
+			<artifactId>atomix-raft</artifactId>
+			<version>3.0.9</version>
+		</dependency>
 	</dependencies>
 
 	<build>
