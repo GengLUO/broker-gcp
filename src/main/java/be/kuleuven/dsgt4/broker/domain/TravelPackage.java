@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.broker;
+package be.kuleuven.dsgt4.broker.domain;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -38,5 +38,10 @@ public class TravelPackage {
 
     public String getUserId() {
         return userId;
+    }
+
+    public void clear() {
+        flights.clear();
+        hotels.clear();
     }
 }
