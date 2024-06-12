@@ -22,43 +22,39 @@ public class Flight {
     }
 
     // Getters and setters
-    // Getter for id
-    public Long getId() {
-        return id;
+
+    // Getters
+    public Long getId() { return id;}
+
+    public String getOrigin() { return origin;}
+
+    public String getDestination() { return destination;}
+
+    public int getAvailableSeats() { return availableSeats;}
+
+    // Setters
+    public void setId(Long id) { this.id = id; }
+
+    public void setOrigin(String origin) { this.origin = origin;}
+
+    public void setDestination(String destination) { this.destination = destination;}
+
+    public void setAvailableSeats(int availableSeats) { this.availableSeats = availableSeats;}
+
+    // Equals and hashCode methods
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Flight flight = (Flight) o;
+        return availableSeats == flight.availableSeats &&
+                Objects.equals(id, flight.id) &&
+                Objects.equals(origin, flight.origin) &&
+                Objects.equals(destination, flight.destination);
     }
 
-    // Setter for id
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    // Getter for origin
-    public String getOrigin() {
-        return origin;
-    }
-
-    // Setter for origin
-    public void setOrigin(String origin) {
-        this.origin = origin;
-    }
-
-    // Getter for destination
-    public String getDestination() {
-        return destination;
-    }
-
-    // Setter for destination
-    public void setDestination(String destination) {
-        this.destination = destination;
-    }
-
-    // Getter for availableSeats
-    public int getAvailableSeats() {
-        return availableSeats;
-    }
-
-    // Setter for availableSeats
-    public void setAvailableSeats(int availableSeats) {
-        this.availableSeats = availableSeats;
+    @Override
+    public int hashCode() {
+        return Objects.hash(id, origin, destination, availableSeats);
     }
 }
