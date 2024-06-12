@@ -1,3 +1,9 @@
+//TODO:
+// HATEOAS -> use WebMvcLinkBuilder. (not CollectionModel) -> DONE
+// Integration with Authentication -> is it needed? is so, check firestore controller for usage example
+// Error Handling,
+// Data validation
+
 package be.kuleuven.dsgt4.broker.controllers;
 
 import be.kuleuven.dsgt4.broker.services.BrokerPublisherService;
@@ -10,13 +16,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
-
-//TODO:
-// HATEOAS -> use WebMvcLinkBuilder. (not CollectionModel) -> DONE
-// Integration with Authentication -> is it needed? is so, check firestore controller for usage example
-// Error Handling,
-// Data validation
 
 @RestController
 @RequestMapping("/bookings")
@@ -34,7 +35,10 @@ public class BookingController {
     @GetMapping("/test-publish/{topic}")
     public ResponseEntity<?> testPublish(@PathVariable String topic) {
         try {
-            String messageId = publisherService.publishMessage(topic, "Test message");
+            Map<String, Object> testMessage = new HashMap<>();
+            testMessage.put("type", "test");
+            testMessage.put("message", "Test message");
+            String messageId = publisherService.publishMessage(topic, testMessage);
             return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
@@ -42,10 +46,10 @@ public class BookingController {
     }
 
     @PostMapping("/hotels")
-    public ResponseEntity<?> createHotelBooking(@RequestBody String bookingDetails) {
+    public ResponseEntity<?> createHotelBooking(@RequestBody Map<String, Object> bookingDetails) {
         try {
             String messageId = publisherService.publishMessage("hotel-booking-requests", bookingDetails);
-            EntityModel<String> resource = bookingToEntityModel("hotel", messageId, bookingDetails);
+            EntityModel<String> resource = bookingToEntityModel("hotel", messageId, bookingDetails.toString());
             return ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class)
                     .createHotelBooking(bookingDetails)).toUri()).body(resource);
         } catch (Exception e) {
@@ -54,10 +58,10 @@ public class BookingController {
     }
 
     @PostMapping("/flights")
-    public ResponseEntity<?> createFlightBooking(@RequestBody String bookingDetails) {
+    public ResponseEntity<?> createFlightBooking(@RequestBody Map<String, Object> bookingDetails) {
         try {
             String messageId = publisherService.publishMessage("flight-booking-requests", bookingDetails);
-            EntityModel<String> resource = bookingToEntityModel("flight", messageId, bookingDetails);
+            EntityModel<String> resource = bookingToEntityModel("flight", messageId, bookingDetails.toString());
             return ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class)
                     .createFlightBooking(bookingDetails)).toUri()).body(resource);
         } catch (Exception e) {
@@ -78,6 +82,26 @@ public class BookingController {
         }
     }
 
+    @PutMapping("/{type}/{id}")
+    public ResponseEntity<?> updateBooking(@PathVariable String type, @PathVariable String id, @RequestBody Map<String, Object> updateDetails) {
+        try {
+            transactionCoordinatorService.updateTravelPackage(id, updateDetails).get();
+            return ResponseEntity.ok("Booking updated successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error updating booking: " + e.getMessage());
+        }
+    }
+
+    @DeleteMapping("/{type}/{id}")
+    public ResponseEntity<?> deleteBooking(@PathVariable String type, @PathVariable String id) {
+        try {
+            transactionCoordinatorService.deleteTravelPackage(id).get();
+            return ResponseEntity.ok("Booking deleted successfully.");
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error deleting booking: " + e.getMessage());
+        }
+    }
+    
     @GetMapping("/{type}/{id}")
     public ResponseEntity<?> retrieveBooking(@PathVariable String type, @PathVariable String id) {
         // Simulate fetching booking details, actual implementation needed

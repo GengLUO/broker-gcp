@@ -51,35 +51,57 @@
 Interaction and Integration
 Given the scenario where the travel agency interacts with suppliers (Hotel and Flight) using a Pub/Sub system, and then processes bookings with a transaction coordinator to ensure consistency and fault tolerance, here's how the components should interact:
 
-1. **Client Requests Travel Packages**:
-    - **Client -> BookingController**: Client requests travel packages.
-    - **BookingController -> Pub/Sub System**: Publishes messages to Hotel and Flight Pub/Sub topics.
-    - **Hotel/Flight Services -> Pub/Sub System**: Hotel and Flight services respond with available packages.
-    - **Pub/Sub System -> BookingController**: Aggregates responses and returns them to the client.
-  
-2. **Client Initiates Booking**:
-    - **Client -> BookingController**: Client sends a request to book a travel package.
-    - **BookingController -> TransactionCoordinatorService**: Forwards the booking request to `TransactionCoordinatorService`.
-    - **TransactionCoordinatorService -> 2PC**: Initiates a 2PC to ensure all involved services can commit to the booking.
-    - **TransactionCoordinatorService -> Firestore**: Stores the booking details and updates the travel packages in Firestore corresponding to respective users.
-
-3. **User Profile and Customer Management**:
-    - **Client -> FirestoreController**: Client manages user profiles and customer-related data.
-    - **FirestoreController -> Firestore**: Performs CRUD operations on user and customer data.
-
-## Detailed Interaction:
-
 #### Step 1: Client Requests Travel Packages
 - **Client -> BookingController**: Client sends a request to get travel packages.
 - **BookingController -> Pub/Sub System**: `BookingController` publishes messages to Hotel and Flight Pub/Sub topics.
+    - assuming booking details message format (json format)
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "hotelId": 1,
+            "flightId": 1,
+            "roomsBooked": 2,
+            "seatsBooked": 2,
+            "customers": [
+                {
+                    "name": "John Doe",
+                    "email": "john.doe@example.com"
+                },
+                {
+                    "name": "Jane Doe",
+                    "email": "jane.doe@example.com"
+                }
+            ]
+        }
+        ```
 - **Hotel/Flight Services -> Pub/Sub System**: Hotel and Flight services respond with available packages.
-- **Pub/Sub System -> BookingController**: `BookingController` aggregates the responses and returns them to the client.
+- **Pub/Sub System -> BookingController**: `BookingController` aggregates the responses and returns as packages with ID to the client.
 
 #### Step 2: Client Initiates Booking
 - **Client -> BookingController**: Client sends a request to book a travel package.
 - **BookingController -> TransactionCoordinatorService**: `BookingController` forwards the booking request to `TransactionCoordinatorService`.
 - **TransactionCoordinatorService -> 2PC**: `TransactionCoordinatorService` initiates a 2PC to ensure all involved services (Hotel and Flight) can commit to the booking.
 - **TransactionCoordinatorService -> Firestore**: `TransactionCoordinatorService` stores the booking details under the user's document in Firestore.
+
+#### Step 3: **User Profile and Customer Management**:
+- **Client -> FirestoreController**: Client manages user profiles and customer-related data.
+- **FirestoreController -> Firestore**: Performs CRUD operations on user and customer data.
+    the user needs to select travel packages, add customer details, book from respective suppliers, and update these details, a compound index will help in querying and retrieving the necessary information efficiently.
+    
+    Data Model
+    
+    In Firestore, you can have the following collections and documents:
+    
+    1. **Users Collection**:
+       - Each user document contains user-specific details.
+       - Sub-collection `bookings` for storing booked travel packages.
+    
+    2. **TravelPackages Collection**:
+       - Documents contain details about each travel package.
+    
+    3. **Bookings Collection**:
+       - Documents for each booking, containing travel package ID, hotel ID, flight ID, customer details, etc.
 
 ## Step-by-Step Flow:
 

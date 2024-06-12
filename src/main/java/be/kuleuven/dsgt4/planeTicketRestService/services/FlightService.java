@@ -24,7 +24,9 @@ public class FlightService {
                 .orElseThrow(() -> new FlightNotFoundException(id));
     }
 
-    public boolean bookFlight(Long flightId, int seats) {
+    public boolean bookFlight(Map<String, Object> bookingDetails) {
+        Long flightId = ((Number) bookingDetails.get("flightId")).longValue();
+        int seats = (int) bookingDetails.get("seats");
         return flightRepository.bookFlight(flightId, seats);
     }
 
@@ -37,15 +39,11 @@ public class FlightService {
     }
 
     public void processBookingRequest(Map<String, Object> message) {
-        // Extract booking details from the Pub/Sub message
-        Long flightId = Long.parseLong(message.get("flightId").toString());
-        int seats = Integer.parseInt(message.get("seats").toString());
-        
-        // Book the flight
-        if (isFlightAvailable(flightId, seats)) {
-            bookFlight(flightId, seats);
-        } else {
-            throw new RuntimeException("Flight is not available");
+        Long flightId = ((Number) message.get("flightId")).longValue();
+        int seats = (int) message.get("seats");
+        boolean success = bookFlight(message);
+        if (!success) {
+            throw new RuntimeException("Booking failed for flight ID: " + flightId);
         }
     }
 }

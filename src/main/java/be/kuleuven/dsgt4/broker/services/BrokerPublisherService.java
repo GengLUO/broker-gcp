@@ -9,36 +9,33 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import com.google.gson.Gson;
 
 @Service
 public class BrokerPublisherService {
 
-//    TODO: these can be env variables
     private static final String PROJECT_ID = "broker-da44b";
     private static final String TOPIC_ID = "your-topic-id";
-    // For now, we have:
-    // 1. hotel-booking-requests
-    // 2. flight-booking-requests
     private static final String PUSH_ENDPOINT = "https://your-domain.com/bookings/pubsub/push";
     private final TransactionCoordinatorService transactionCoordinatorService;
+    private final Gson gson = new Gson();
 
     @Autowired
     public BrokerPublisherService(TransactionCoordinatorService transactionCoordinatorService) {
         this.transactionCoordinatorService = transactionCoordinatorService;
     }
 
-    //https://console.cloud.google.com/cloudpubsub/subscription/list?project=broker-da44b&supportedpurview=project
-    public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
+    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
         try {
-            // Create a publisher instance with default settings bound to the topic
             publisher = Publisher.newBuilder(topicName).build();
-            ByteString data = ByteString.copyFromUtf8(message);
+            String jsonMessage = gson.toJson(message);
+            ByteString data = ByteString.copyFromUtf8(jsonMessage);
             PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
-            // Once published, returns a server-assigned message id (unique within the topic)
             ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
             String messageId = messageIdFuture.get();
             System.out.println("Published message ID: " + messageId);
@@ -65,7 +62,6 @@ public class BrokerPublisherService {
     }
 
     public void handleBookingResponse(String message) {
-        // Process the message and coordinate the transaction
         transactionCoordinatorService.processBookingResponse(message);
     }
 }

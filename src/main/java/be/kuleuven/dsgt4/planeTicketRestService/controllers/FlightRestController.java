@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import com.google.gson.Gson;
+
 
 @RestController
 @RequestMapping("/flights")
@@ -22,6 +24,7 @@ public class FlightRestController {
     private FlightService flightService;
 
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
+    private final Gson gson = new Gson();
 
     @GetMapping("/all")
     public ResponseEntity<CollectionModel<EntityModel<Flight>>> getFlights(@RequestParam String key) {
@@ -45,11 +48,11 @@ public class FlightRestController {
     }
 
     @PostMapping("/book")
-    public ResponseEntity<String> bookFlight(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+    public ResponseEntity<String> bookFlight(@RequestBody Map<String, Object> bookingDetails, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = flightService.bookFlight(flightId, seats);
+        boolean success = flightService.bookFlight(bookingDetails);
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
 
@@ -73,8 +76,8 @@ public class FlightRestController {
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        // Process the Pub/Sub message
         flightService.processBookingRequest(message);
         return ResponseEntity.ok("Message processed");
     }
+
 }

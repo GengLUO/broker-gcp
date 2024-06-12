@@ -15,6 +15,7 @@ import org.slf4j.LoggerFactory;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import com.google.gson.Gson;
 
 @Service
 public class TransactionCoordinatorService {
@@ -26,6 +27,8 @@ public class TransactionCoordinatorService {
 
     @Autowired
     private PBFTService pbftService;
+
+    private final Gson gson = new Gson();
 
     public ApiFuture<WriteResult> addTravelPackage(Map<String, Object> data) {
         logger.info("Adding travel package");
@@ -53,7 +56,6 @@ public class TransactionCoordinatorService {
             List<String> flightIds = (List<String>) packageSnapshot.get("flightIds");
             List<String> hotelIds = (List<String>) packageSnapshot.get("hotelIds");
 
-            // Use PBFT to ensure consensus before proceeding
             if (!pbftService.initiateConsensus(packageId)) {
                 throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
             }
@@ -103,7 +105,7 @@ public class TransactionCoordinatorService {
     }
 
     private BookingResponse parseMessage(String message) {
-        return new BookingResponse("transactionId", true);
+        return gson.fromJson(message, BookingResponse.class);
     }
 
     private void commitTransaction(BookingTransaction bookingTransaction) {
@@ -208,5 +210,3 @@ public class TransactionCoordinatorService {
         });
     }
 }
-
-
