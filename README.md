@@ -27,7 +27,7 @@
              |
              v
 +----------------------+
-|  RAFT Consensus      | (Ensures log consistency across nodes)
+|  RAFT Consensus      | (Ensures log consistency across nodes -- Already implemented in Firestore)
 +----------------------+
              |
              v
@@ -44,7 +44,7 @@
 4. **Flight Booking Service**: Subscribes to events from the Pub/Sub system and participates in 2PC managed by the Transaction Coordinator.
 5. **Hotel Booking Service**: Similarly, subscribes to events and participates in 2PC.
 6. **Firestore Database**: Stores data and participates in 2PC to ensure consistent state across the distributed system.
-7. **RAFT Consensus**: Ensures log consistency across distributed nodes, which helps maintain a consistent state in the system. It is particularly useful for leader election and ensuring a single source of truth in the system.
+7. **RAFT Consensus**: Ensures log consistency across distributed nodes, which helps maintain a consistent state in the system. It is particularly useful for leader election and ensuring a single source of truth in the system. (Already implemented in Firestore)
 8. **PBFT Algorithm**: Handles Byzantine faults to ensure the system can tolerate and function correctly even if some nodes exhibit arbitrary or malicious behavior. This is particularly important in environments where nodes may not be fully trusted.
 
 ## Interaction Flow
