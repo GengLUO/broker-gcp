@@ -36,25 +36,13 @@ public class FlightRepository {
     }
 
     public boolean bookFlight(Long flightId, int seats) {
-        if (isFlightAvailable(flightId,seats)) {
-            Flight flight = flights.get(flightId);
+        Flight flight = flights.get(flightId);
+        if (flight != null && flight.getAvailableSeats() >= seats) {
             flight.setAvailableSeats(flight.getAvailableSeats() - seats);
             return true;
         }
         return false;
     }
 
-    public boolean isFlightAvailable(Long flightId, int seats) {
-        Flight flight = flights.get(flightId);
-        return flight != null && flight.getAvailableSeats() >= seats;
-    }
-
-    public boolean cancelFlight(Long flightId, int seats) {
-        Flight flight = flights.get(flightId);
-        if (flight != null) {
-            flight.setAvailableSeats(flight.getAvailableSeats() + seats);
-            return true;
-        }
-        return false;
-    }
+    // You can add more methods as needed, such as adding, updating, or deleting flights.
 }

@@ -46,18 +46,5 @@ public class HotelRepository {
         return false;
     }
 
-    public boolean isHotelAvailable(Long hotelId, int rooms) {
-        Hotel hotel = hotels.get(hotelId);
-        return hotel != null && hotel.getAvailableRooms() >= rooms;
-    }
-
-    public boolean cancelHotel(Long hotelId, int rooms) {
-        Hotel hotel = hotels.get(hotelId);
-        if (hotel != null) {
-            hotel.setAvailableRooms(hotel.getAvailableRooms() + rooms);
-            return true;
-        }
-        return false;
-    }
     // You can add more methods as needed, such as adding, updating, or deleting hotels.
 }
