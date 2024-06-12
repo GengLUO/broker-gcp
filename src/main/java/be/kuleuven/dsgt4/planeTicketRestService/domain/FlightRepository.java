@@ -2,7 +2,6 @@ package be.kuleuven.dsgt4.planeTicketRestService.domain;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
-
 import javax.annotation.PostConstruct;
 import java.util.Collection;
 import java.util.HashMap;
@@ -44,5 +43,17 @@ public class FlightRepository {
         return false;
     }
 
-    // You can add more methods as needed, such as adding, updating, or deleting flights.
+    public boolean isFlightAvailable(Long flightId, int seats) {
+        Flight flight = flights.get(flightId);
+        return flight != null && flight.getAvailableSeats() >= seats;
+    }
+
+    public boolean cancelFlight(Long flightId, int seats) {
+        Flight flight = flights.get(flightId);
+        if (flight != null) {
+            flight.setAvailableSeats(flight.getAvailableSeats() + seats);
+            return true;
+        }
+        return false;
+    }
 }

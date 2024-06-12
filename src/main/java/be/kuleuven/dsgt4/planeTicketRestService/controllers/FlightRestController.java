@@ -1,8 +1,7 @@
 package be.kuleuven.dsgt4.planeTicketRestService.controllers;
 
-
 import be.kuleuven.dsgt4.planeTicketRestService.domain.Flight;
-import be.kuleuven.dsgt4.planeTicketRestService.services.FlightService;
+import be.kuleuven.dsgt4.planeTicketRestService.domain.FlightRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -10,46 +9,101 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.google.gson.Gson;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/flights")
 public class FlightRestController {
 
     @Autowired
-    private FlightService flightService;
+    private FlightRepository flightRepository;
 
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
+    private final Gson gson = new Gson();
 
     @GetMapping("/all")
     public ResponseEntity<CollectionModel<EntityModel<Flight>>> getFlights(@RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        List<EntityModel<Flight>> flights = flightService.getAllFlights().stream()
+        List<EntityModel<Flight>> flights = flightRepository.getAllFlights().stream()
                 .map(flight -> EntityModel.of(flight,
-                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(flight.getId(), key)).withSelfRel()))
+                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(flight.getId().toString(), key)).withSelfRel()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(CollectionModel.of(flights, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlights(key)).withSelfRel()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EntityModel<Flight>> getFlight(@PathVariable Long id, @RequestParam String key) {
+    public ResponseEntity<EntityModel<Flight>> getFlight(@PathVariable String id, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        Flight flight = flightService.getFlightById(id);
-        return ResponseEntity.ok(EntityModel.of(flight, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(id, key)).withSelfRel()));
+        Optional<Flight> optionalFlight = flightRepository.getFlightById(Long.valueOf(id));
+        if (optionalFlight.isPresent()) {
+            Flight flight = optionalFlight.get();
+            return ResponseEntity.ok(EntityModel.of(flight,
+                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(id, key)).withSelfRel()));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @PostMapping("/book")
-    public ResponseEntity<String> bookFlight(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+    public ResponseEntity<String> bookFlight(@RequestBody Map<String, Object> bookingDetails, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = flightService.bookFlight(flightId, seats);
+        Long flightId = Long.valueOf(bookingDetails.get("flightId").toString());
+        int seats = (int) bookingDetails.get("seatsBooked");
+        boolean success = flightRepository.bookFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+    }
+
+    @GetMapping("/available")
+    public ResponseEntity<Boolean> isFlightAvailable(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean available = flightRepository.isFlightAvailable(flightId, seats);
+        return ResponseEntity.ok(available);
+    }
+
+    @PostMapping("/cancel")
+    public ResponseEntity<String> cancelFlight(@RequestParam Long flightId, @RequestParam int seats, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        boolean success = flightRepository.cancelFlight(flightId, seats);
+        return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
+
+    @PostMapping("/pubsub/push")
+    public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
+        String packageId = (String) message.get("packageId");
+        String userId = (String) message.get("userId");
+        Long flightId = Long.valueOf(message.get("flightId").toString());
+        int seats = (int) message.get("seatsBooked");
+
+        boolean success = flightRepository.bookFlight(flightId, seats);
+
+        // Respond with booking result
+        Map<String, Object> response = new HashMap<>();
+        response.put("packageId", packageId);
+        response.put("userId", userId);
+        response.put("flightId", flightId);
+        response.put("seatsBooked", seats);
+        response.put("success", success);
+
+        // Here you would normally publish the response message to a Pub/Sub topic
+        // For simplicity, we'll just print it
+        System.out.println("Flight booking response: " + response);
+
+        return ResponseEntity.ok("Message processed");
     }
 }
