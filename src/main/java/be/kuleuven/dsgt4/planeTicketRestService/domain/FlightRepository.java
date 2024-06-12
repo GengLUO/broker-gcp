@@ -36,8 +36,8 @@ public class FlightRepository {
     }
 
     public boolean bookFlight(Long flightId, int seats) {
-        if (isFlightAvailable(flightId,seats)) {
-            Flight flight = flights.get(flightId);
+        Flight flight = flights.get(flightId);
+        if (flight != null && flight.getAvailableSeats() >= seats) {
             flight.setAvailableSeats(flight.getAvailableSeats() - seats);
             return true;
         }

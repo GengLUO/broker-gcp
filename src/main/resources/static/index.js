@@ -130,12 +130,12 @@ function wireGuiUpEvents() {
       });
   });
 
-  logoutButton.addEventListener("click", function () {
-    try {
-      var auth = getAuth();
-      auth.signOut();
-    } catch (err) { }
-  });
+  // logoutButton.addEventListener("click", function () {
+  //   try {
+  //     var auth = getAuth();
+  //     auth.signOut();
+  //   } catch (err) { }
+  // });
 
 }
 
@@ -184,13 +184,13 @@ function fetchData(token) {
   whoami(token);
 }
 function showAuthenticated(username) {
-  document.getElementById("namediv").innerHTML = "Hello " + username;
-  document.getElementById("logindiv").style.display = "none";
-  document.getElementById("contentdiv").style.display = "block";
+  // document.getElementById("namediv").innerHTML = "Hello " + username;
+  // document.getElementById("logindiv").style.display = "none";
+  // document.getElementById("contentdiv").style.display = "block";
 }
 
 function showUnAuthenticated() {
-  document.getElementById("namediv").innerHTML = "";
+  // document.getElementById("namediv").innerHTML = "";
   document.getElementById("email").value = "";
   document.getElementById("password").value = "";
   document.getElementById("logindiv").style.display = "block";

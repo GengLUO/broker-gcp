@@ -1,3 +1,226 @@
+## Frameworks
+```
++----------------------+       +-----------------------+
+|   Booking Service    |       |   Transaction Coord.  |
+|   (Publishes events) | <---- |   (Manages 2PC)       |
++----------------------+       +-----------------------+
+             |                              |
+             v                              |
++----------------------+                    |
+|  Pub/Sub System      | <------------------+
++----------------------+
+             |
+             v
++----------------------+
+|  Flight Booking Svc  | (Subscribes to events, participates in 2PC)
++----------------------+
+             |
+             v
++----------------------+
+|  Hotel Booking Svc   | (Subscribes to events, participates in 2PC)
++----------------------+
+             |
+             v
++----------------------+
+|  Firestore Database  | (Stores data, participates in 2PC)
++----------------------+
+             |
+             v
++----------------------+
+|  RAFT Consensus      | (Ensures log consistency across nodes -- Already implemented in Firestore)
++----------------------+
+             |
+             v
++----------------------+
+|  PBFT Algorithm      | (Practically Handles Byzantine Faults)
++----------------------+
+```
+
+## Architectural Overview
+
+1. **Booking Service**: Publishes booking events (e.g., hotel or flight booking requests) to the Pub/Sub system. It interacts with the Transaction Coordinator for managing distributed transactions.
+2. **Transaction Coordinator Service**: Manages two-phase commit (2PC) protocols to ensure atomic and consistent transactions across multiple services (e.g., flight booking service, hotel booking service, and Firestore).
+3. **Pub/Sub System**: Acts as a message broker to facilitate communication between services. The Booking Service publishes events, and the Flight and Hotel Booking Services subscribe to these events.
+4. **Flight Booking Service**: Subscribes to events from the Pub/Sub system and participates in 2PC managed by the Transaction Coordinator.
+5. **Hotel Booking Service**: Similarly, subscribes to events and participates in 2PC.
+6. **Firestore Database**: Stores data and participates in 2PC to ensure consistent state across the distributed system.
+7. **RAFT Consensus**: Ensures log consistency across distributed nodes, which helps maintain a consistent state in the system. It is particularly useful for leader election and ensuring a single source of truth in the system. (Already implemented in Firestore)
+8. **PBFT Algorithm**: Handles Byzantine faults to ensure the system can tolerate and function correctly even if some nodes exhibit arbitrary or malicious behavior. This is particularly important in environments where nodes may not be fully trusted.
+
+## Interaction Flow
+Interaction and Integration
+Given the scenario where the travel agency interacts with suppliers (Hotel and Flight) using a Pub/Sub system, and then processes bookings with a transaction coordinator to ensure consistency and fault tolerance, here's how the components should interact:
+
+#### Step 1: Client Requests Travel Packages
+- **Client -> BookingController**: Client sends a request to get avaialble flgiht and hotels. the booking controller first initiate and create an mepty travel package `TravelPackage` class with user ID.
+- **BookingController -> Pub/Sub System**: `BookingController` publishes messages to Hotel and Flight Pub/Sub topics.
+    - assuming desired booking details message format (json format)
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "origin": "New York",
+            "destination": "London",
+            "desiredRooms": 2,
+            "desiredSeats": 2,
+        }
+        ```
+- **Hotel/Flight Services -> Pub/Sub System**: Hotel and Flight services respond with available hotels and flights.
+    - assuming returned avaialbe message format (json format) from flgiht service:
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "flgithId": [1,2,3],
+            "seats": 2,
+        }
+        ```
+    - assuming returned avaialbe message format (json format) from hotel service:
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "hotelId": [1,2,3],
+            "rooms": 2,
+        }
+        ```
+- **Pub/Sub System -> BookingController**: `BookingController` aggregates the responses and returns the availiable hotels and flights with respective ID to the client for the client to select.
+    - assuming returned avaialbe message format (json format) for client:
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "hotelId": [1,2,3],
+            "flightId": [1,2,3],
+            "rooms": 2,
+            "seats": 2,
+        }
+        ```
+
+#### Step 2: Client Initiates Booking
+- **Client -> BookingController**: Client manipulate to add or remove the prefered flights and add to its empty travel package class `TravelPackage` sends a request to book a travel package.
+- **BookingController -> TransactionCoordinatorService**: `BookingController` forwards the booking request to `TransactionCoordinatorService`.
+    - assuming booking details message format (json format)
+        ```json
+        {
+            "packageId": "package123",
+            "userId": "user123",
+            "hotelId": 1,
+            "flightId": 1,
+            "roomsBooked": 2,
+            "seatsBooked": 2,
+            "customers": [
+                {
+                    "name": "John Doe",
+                    "email": "john.doe@example.com"
+                },
+                {
+                    "name": "Jane Doe",
+                    "email": "jane.doe@example.com"
+                }
+            ]
+        }
+        ```
+- **TransactionCoordinatorService -> 2PC**: `TransactionCoordinatorService` initiates a 2PC to ensure all involved services (Hotel and Flight) can commit to the booking.
+    - two phase commit to ensure that all services are ready to commit the transaction or abort if any service is not ready.
+- **TransactionCoordinatorService -> Firestore**: `TransactionCoordinatorService` stores the booking details under the user's document in Firestore.
+    - if succeed committing instead of aborting, the transaction coordinator will store the booking details and travel packages in Firestore.
+    - Data Model
+    
+    In Firestore, you can have the following collections and documents:
+    
+    1. **Users Collection**:
+       - Each user document contains user-specific details.
+       - Sub-collection `bookings` for storing booked travel packages.
+    
+    2. **TravelPackages Collection**:
+       - Documents contain details about each travel package.
+    
+    3. **Bookings Collection**:
+       - Documents for each booking, containing travel package ID, hotel ID, flight ID, customer details, etc.
+
+#### Step 3: **User Profile and Customer Management**:
+- **Client -> FirestoreController**: Client manages user profiles and customer-related data.
+- **FirestoreController -> Firestore**: Performs CRUD operations on user and customer data.
+    the user needs to select travel packages, add customer details, book from respective suppliers, and update these details, a compound index will help in querying and retrieving the necessary information efficiently.
+    
+    Data Model
+    
+    In Firestore, you can have the following collections and documents:
+    
+    1. **Users Collection**:
+       - Each user document contains user-specific details.
+       - Sub-collection `bookings` for storing booked travel packages.
+    
+    2. **TravelPackages Collection**:
+       - Documents contain details about each travel package.
+    
+    3. **Bookings Collection**:
+       - Documents for each booking, containing travel package ID, hotel ID, flight ID, customer details, etc.
+
+## Step-by-Step Flow:
+
+1. **Initiating a Booking (Pub/Sub + Transactional RPC)**:
+   - The client initiates a booking request.
+   - The booking service publishes a message to a Pub/Sub topic indicating a new booking request.
+   - Services like hotel booking, flight booking, and payment subscribe to this topic.
+
+2. **Coordinating the Transaction (Transaction Coordinator + 2PC)**:
+   - The transaction coordinator starts a new transaction.
+   - The transaction coordinator sends prepare requests (part of 2PC) to the hotel booking, flight booking, and payment services.
+   - Each service prepares by checking if the resources (rooms, flights, funds) are available and locks them.
+   - Each service responds with a yes or no vote.
+
+3. **Executing the Transaction (Transactional RPC + Firestore)**:
+   - If all services vote yes, the transaction coordinator sends a commit request to all services.
+   - Each service then commits the transaction, updating their state and Firestore with the booking details.
+   - If any service votes no, the transaction coordinator sends an abort request, and all services revert any changes.
+
+4. **Ensuring Consistency and Fault Tolerance (RAFT)**:
+   - RAFT is used to ensure that the logs of operations (e.g., bookings) are consistent across all nodes.
+   - If a node fails, RAFT ensures that a new leader is elected, and the state is consistent across the remaining nodes.
+
+5. **Securing Fault Tolerance (PBFT)**:
+   - Ensures the system can handle and recover from arbitrary (Byzantine) failures.
+   - Requires additional complexity and integration of BFT algorithms.
+
+## Components Overview:
+Correct, the `BookingController` and `BrokerPublisherService` do not directly utilize `BookingResponse` or `BookingTransaction`. These classes are used internally within the `TransactionCoordinatorService` to manage and coordinate the transactions. Here's a summary of their roles:
+
+1. **`BookingController`**:
+   - Handles incoming requests from the client for booking travel packages.
+   - Forwards booking details to the `BrokerPublisherService` to publish messages to the Pub/Sub system.
+
+2. **`BrokerPublisherService`**:
+   - Publishes booking messages to the Pub/Sub system.
+   - Handles incoming push notifications from the Pub/Sub system and forwards them to the `TransactionCoordinatorService`.
+
+3. **`TransactionCoordinatorService`**:
+   - Manages the booking transactions.
+   - Uses `BookingResponse` to parse responses from services.
+   - Uses `BookingTransaction` to store and manage the transaction details in Firestore.
+   - Implements the 2PC protocol to coordinate and commit/abort transactions.
+
+4. **`FirestoreController`**: 
+   - Manages user profiles and customer-related operations.
+
+## Implementing Fault Tolerance with PBFT
+Given the use cases and applications for PBFT, it should be integrated into critical areas where Byzantine faults can cause significant issues:
+
+1. **Booking Confirmation**:
+    - Before finalizing a booking, use PBFT to ensure that all nodes agree on the booking details. This prevents any malicious node from altering the booking information.
+
+2. **Payment Processing**:
+    - Integrate PBFT to validate payment transactions. This ensures that all nodes verify and agree on the payment details before processing.
+
+3. **Data Consistency**:
+    - Use PBFT to ensure that the data stored in Firestore remains consistent across all nodes. This can be done by having PBFT consensus before writing any critical data.
+
+4. **RAFT and PBFT Integration**:
+    - RAFT ensures log consistency and leader election, while PBFT ensures the integrity of the data even in the presence of malicious nodes. Combining these ensures a robust and fault-tolerant system.
+
+By integrating PBFT in these critical areas, the system ensures high reliability and security, preventing arbitrary or malicious failures from disrupting the service.
+
 ## Add firebaseadminsdk
 in the src/main/java/be.kuleuven.dsgt4/auth, create a new file called
 ```
