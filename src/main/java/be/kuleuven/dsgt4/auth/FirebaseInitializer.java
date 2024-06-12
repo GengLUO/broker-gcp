@@ -5,11 +5,14 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseAuthException;
+import com.google.cloud.secretmanager.v1.AccessSecretVersionRequest;
+import com.google.cloud.secretmanager.v1.SecretManagerServiceClient;
+import com.google.cloud.secretmanager.v1.SecretVersionName;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import javax.annotation.PostConstruct;
-import java.io.FileInputStream;
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
@@ -17,19 +20,28 @@ import java.util.Map;
 @Component
 public class FirebaseInitializer {
 
-    @Value("${firebase.service-account-key-path}")
-    private String serviceAccountKeyPath;
+    @Value("${google.cloud.secret-name}")
+    private String secretName;
+
+    @Value("${google.cloud.secret-version}")
+    private String secretVersion;
 
     @Value("${google.cloud.project-id}")
     private String projectId;
 
     @PostConstruct
     public void initialize() {
-        try {
-            FileInputStream serviceAccount = new FileInputStream(serviceAccountKeyPath);
+        try (SecretManagerServiceClient client = SecretManagerServiceClient.create()) {
+            SecretVersionName secretVersionName = SecretVersionName.of(projectId, secretName, secretVersion);
+            AccessSecretVersionRequest request = AccessSecretVersionRequest.newBuilder()
+                    .setName(secretVersionName.toString())
+                    .build();
+            String secretPayload = client.accessSecretVersion(request).getPayload().getData().toStringUtf8();
+
+            ByteArrayInputStream serviceAccountStream = new ByteArrayInputStream(secretPayload.getBytes());
 
             FirebaseOptions options = new FirebaseOptions.Builder()
-                    .setCredentials(GoogleCredentials.fromStream(serviceAccount))
+                    .setCredentials(GoogleCredentials.fromStream(serviceAccountStream))
                     .setProjectId(projectId)
                     .build();
 
@@ -62,6 +74,7 @@ public class FirebaseInitializer {
         setCustomClaims(uid, claims);
     }
 }
+
 
 
 // package be.kuleuven.dsgt4.auth;

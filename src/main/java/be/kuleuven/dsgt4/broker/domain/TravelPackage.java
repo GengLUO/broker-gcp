@@ -7,9 +7,11 @@ public class TravelPackage {
     private List<String> flights = new ArrayList<>();
     private List<String> hotels = new ArrayList<>();
     private String userId;
+    private String packageId;
 
-    public TravelPackage(String userId) {
+    public TravelPackage(String userId, String packageId) {
         this.userId = userId;
+        this.packageId = packageId;
     }
 
     public List<String> getFlights() {
@@ -38,6 +40,10 @@ public class TravelPackage {
 
     public String getUserId() {
         return userId;
+    }
+
+    public String getPackageId() {
+        return packageId;
     }
 
     public void clear() {
