@@ -1,7 +1,7 @@
 package be.kuleuven.dsgt4.planeTicketRestService.controllers;
 
 import be.kuleuven.dsgt4.planeTicketRestService.domain.Flight;
-import be.kuleuven.dsgt4.planeTicketRestService.services.FlightService;
+import be.kuleuven.dsgt4.planeTicketRestService.domain.FlightRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -13,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import java.util.Optional;
 import com.google.gson.Gson;
 
 
@@ -21,7 +22,7 @@ import com.google.gson.Gson;
 public class FlightRestController {
 
     @Autowired
-    private FlightService flightService;
+    private FlightRepository flightRepository;
 
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
     private final Gson gson = new Gson();
@@ -31,7 +32,7 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        List<EntityModel<Flight>> flights = flightService.getAllFlights().stream()
+        List<EntityModel<Flight>> flights = flightRepository.getAllFlights().stream()
                 .map(flight -> EntityModel.of(flight,
                         WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(flight.getId(), key)).withSelfRel()))
                 .collect(Collectors.toList());
@@ -43,8 +44,14 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        Flight flight = flightService.getFlightById(id);
-        return ResponseEntity.ok(EntityModel.of(flight, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(id, key)).withSelfRel()));
+        Optional<Flight> optionalFlight = flightRepository.getFlightById(id);
+        if (optionalFlight.isPresent()) {
+            Flight flight = optionalFlight.get();
+            return ResponseEntity.ok(EntityModel.of(flight,
+                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(id, key)).withSelfRel()));
+        } else {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
+        }
     }
 
     @PostMapping("/book")
@@ -52,7 +59,7 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = flightService.bookFlight(bookingDetails);
+        boolean success = flightRepository.bookFlight(bookingDetails);
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
 
@@ -61,7 +68,7 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean available = flightService.isFlightAvailable(flightId, seats);
+        boolean available = flightRepository.isFlightAvailable(flightId, seats);
         return ResponseEntity.ok(available);
     }
 
@@ -70,13 +77,13 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = flightService.cancelFlight(flightId, seats);
+        boolean success = flightRepository.cancelFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
     }
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        flightService.processBookingRequest(message);
+        flightRepository.processBookingRequest(message); // TODO: to be implemented
         return ResponseEntity.ok("Message processed");
     }
 
