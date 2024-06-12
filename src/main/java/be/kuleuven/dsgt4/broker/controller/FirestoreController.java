@@ -1,6 +1,7 @@
-package be.kuleuven.dsgt4;
+package be.kuleuven.dsgt4.broker.controller;
 
 import be.kuleuven.dsgt4.auth.WebSecurityConfig;
+import be.kuleuven.dsgt4.broker.domain.User;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.firestore.*;
 import org.springframework.beans.factory.annotation.Autowired;
