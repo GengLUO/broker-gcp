@@ -7,7 +7,6 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
-//TODO: Add a requestmapping if there is too many controllers
 @Controller
 public class TravelController {
 
@@ -30,6 +29,7 @@ public class TravelController {
         }
     }
 
+
     @GetMapping("/profile")
     public String showProfile(Model model) {
         // Replace with actual logic to get user details
@@ -49,10 +49,13 @@ public class TravelController {
         model.addAttribute("message", "Settings updated to: " + newSetting);
         return "settings";
     }
-
+    @GetMapping("/mybookings")
+    public String showBookings() {
+        return "forward:/mybookings.html";
+    }
     @GetMapping("/dashboard")
     public String showDashboard() {
-        return "dashboard";
+        return "forward:/dashboard.html";
     }
 
     @PostMapping("/reserve")
