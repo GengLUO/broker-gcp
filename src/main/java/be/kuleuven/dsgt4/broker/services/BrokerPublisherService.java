@@ -3,23 +3,25 @@ package be.kuleuven.dsgt4.broker.services;
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
+import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.*;
+
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
-
-import be.kuleuven.dsgt4.broker.domain.TravelPackage;
-import be.kuleuven.dsgt4.broker.domain.ItemType;
-import com.fasterxml.jackson.core.type.TypeReference;
-
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.core.type.TypeReference;
+
+import be.kuleuven.dsgt4.broker.domain.TravelPackage;
+import be.kuleuven.dsgt4.broker.domain.ItemType;
 
 
 @Service
@@ -30,36 +32,18 @@ public class BrokerPublisherService {
     private static final String TOPIC_ID = "your-topic-id";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final List<TravelPackage> travelPackages = new ArrayList<>();
+    private final TransactionCoordinatorService transactionCoordinatorService;
+    private final Gson gson = new Gson();
     //For now, we have:
 //    1. hotel-booking-requests
 //    2. flight-booking-requests
     private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
 
-    //official example code for publish messages
-    public String publishMessageExample(String message) throws IOException, ExecutionException, InterruptedException {
-        TopicName topicName = TopicName.of(PROJECT_ID, TOPIC_ID);
-        Publisher publisher = null;
-        try {
-            // Create a publisher instance with default settings bound to the topic
-            publisher = Publisher.newBuilder(topicName).build();
-            ByteString data = ByteString.copyFromUtf8(message);
-            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
-
-            // Once published, returns a server-assigned message id (unique within the topic)
-            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
-            String messageId = messageIdFuture.get();
-            System.out.println("Published message ID: " + messageId);
-            return messageId;
-//            TODO: use this ? https://cloud.google.com/pubsub/docs/publisher
-        } finally {
-            if (publisher != null) {
-                // When finished with the publisher, shutdown to free up resources.
-                publisher.shutdown();
-                publisher.awaitTermination(1, TimeUnit.MINUTES);
-            }
-        }
+    @Autowired
+    public BrokerPublisherService(TransactionCoordinatorService transactionCoordinatorService) {
+        this.transactionCoordinatorService = transactionCoordinatorService;
     }
-
+    
     //use a param topicId
     //方法返回一个字符串，即发布消息后, 返回的消息 ID
     public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
@@ -86,8 +70,26 @@ public class BrokerPublisherService {
         }
     }
 
-    //https://console.cloud.google.com/cloudpubsub/subscription/list?project=broker-da44b&supportedpurview=project
-    //similar to above
+    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
+        TopicName topicName = TopicName.of(PROJECT_ID, topicId);
+        Publisher publisher = null;
+        try {
+            publisher = Publisher.newBuilder(topicName).build();
+            String jsonMessage = gson.toJson(message);
+            ByteString data = ByteString.copyFromUtf8(jsonMessage);
+            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
+            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+            String messageId = messageIdFuture.get();
+            System.out.println("Published message ID: " + messageId);
+            return messageId;
+        } finally {
+            if (publisher != null) {
+                publisher.shutdown();
+                publisher.awaitTermination(1, TimeUnit.MINUTES);
+            }
+        }
+    }
+
     public static void createPushSubscriptionExample(
             String projectId, String subscriptionId, String topicId, String pushEndpoint)
             throws IOException {
@@ -95,16 +97,15 @@ public class BrokerPublisherService {
             TopicName topicName = TopicName.of(projectId, topicId);
             SubscriptionName subscriptionName = SubscriptionName.of(projectId, subscriptionId);
             PushConfig pushConfig = PushConfig.newBuilder().setPushEndpoint(pushEndpoint).build();
-
-            // Create a push subscription with default acknowledgement deadline of 10 seconds.
-            // Messages not successfully acknowledged within 10 seconds will get resent by the server.
-//            TODO: adjust the ack time
             Subscription subscription =
                     subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
             System.out.println("Created push subscription: " + subscription.getName());
         }
     }
 
+    public void handleBookingResponse(String message) {
+        transactionCoordinatorService.processBookingResponse(message);
+    }
 
     /***************All methods below are the real Broker services***************/
     public TravelPackage createTravelPackage(String userId) {
