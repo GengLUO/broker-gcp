@@ -108,10 +108,24 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
    - Requires additional complexity and integration of BFT algorithms.
 
 ## Components Overview:
+Correct, the `BookingController` and `BrokerPublisherService` do not directly utilize `BookingResponse` or `BookingTransaction`. These classes are used internally within the `TransactionCoordinatorService` to manage and coordinate the transactions. Here's a summary of their roles:
 
-- **BookingController**: Handles client requests for travel packages and booking initiation.
-- **FirestoreController**: Manages user profiles and customer-related operations.
-- **TransactionCoordinatorService**: Manages distributed transactions using 2PC, interacts with Pub/Sub for booking messages, and coordinates transactions with Firestore.
+1. **`BookingController`**:
+   - Handles incoming requests from the client for booking travel packages.
+   - Forwards booking details to the `BrokerPublisherService` to publish messages to the Pub/Sub system.
+
+2. **`BrokerPublisherService`**:
+   - Publishes booking messages to the Pub/Sub system.
+   - Handles incoming push notifications from the Pub/Sub system and forwards them to the `TransactionCoordinatorService`.
+
+3. **`TransactionCoordinatorService`**:
+   - Manages the booking transactions.
+   - Uses `BookingResponse` to parse responses from services.
+   - Uses `BookingTransaction` to store and manage the transaction details in Firestore.
+   - Implements the 2PC protocol to coordinate and commit/abort transactions.
+
+4. **`FirestoreController`**: 
+   - Manages user profiles and customer-related operations.
 
 ## Implementing Fault Tolerance with PBFT
 Given the use cases and applications for PBFT, it should be integrated into critical areas where Byzantine faults can cause significant issues:

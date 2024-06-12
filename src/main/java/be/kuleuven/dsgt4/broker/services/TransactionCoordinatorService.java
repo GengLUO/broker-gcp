@@ -1,13 +1,20 @@
 package be.kuleuven.dsgt4.broker.services;
 
+import be.kuleuven.dsgt4.broker.domain.BookingResponse;
+import be.kuleuven.dsgt4.broker.domain.BookingTransaction;
 import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutures;
+import com.google.api.core.ApiFutureCallback;
 import com.google.cloud.firestore.*;
+import com.google.cloud.firestore.FieldValue;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import java.util.List;
-import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 @Service
 public class TransactionCoordinatorService {
@@ -53,20 +60,102 @@ public class TransactionCoordinatorService {
                 transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
             }
 
-            // Here you should update Firestore with booking details under the user's document.
-            // Assuming bookingDetails contains userId and other necessary details.
             String userId = (String) bookingDetails.get("userId");
             DocumentReference userRef = db.collection("users").document(userId).collection("bookings").document();
             transaction.set(userRef, bookingDetails);
-            
+
             return "Travel Package " + packageId + " booked successfully.";
         });
     }
 
     public void processBookingResponse(String message) {
-        // Implement the logic to process the booking response message here
-        logger.info("Processing booking response: {}", message);
-        // You can parse the message and perform necessary actions based on the message content
+        BookingResponse bookingResponse = parseMessage(message);
+
+        ApiFuture<DocumentSnapshot> future = firestore.collection("transactions").document(bookingResponse.getTransactionId()).get();
+        try {
+            DocumentSnapshot document = future.get();
+            if (document.exists()) {
+                BookingTransaction bookingTransaction = document.toObject(BookingTransaction.class);
+
+                if (bookingResponse.isSuccess()) {
+                    commitTransaction(bookingTransaction);
+                } else {
+                    abortTransaction(bookingTransaction);
+                }
+            } else {
+                logger.error("Transaction not found for ID: " + bookingResponse.getTransactionId());
+            }
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error processing booking response: ", e);
+        }
+    }
+
+    private BookingResponse parseMessage(String message) {
+        return new BookingResponse("transactionId", true);
+    }
+
+    private void commitTransaction(BookingTransaction bookingTransaction) {
+        Firestore db = firestore;
+        ApiFuture<Void> future = db.runTransaction(transaction -> {
+            for (String flightId : bookingTransaction.getFlightIds()) {
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "status", "confirmed");
+            }
+
+            for (String hotelId : bookingTransaction.getHotelIds()) {
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "status", "confirmed");
+            }
+
+            DocumentReference userRef = db.collection("users").document(bookingTransaction.getUserId()).collection("bookings").document(bookingTransaction.getTransactionId());
+            transaction.update(userRef, "status", "confirmed");
+
+            return null;
+        });
+
+        ApiFutures.addCallback(future, new ApiFutureCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                logger.info("Transaction committed successfully");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                logger.error("Transaction commit failed", t);
+            }
+        }, Runnable::run);
+    }
+
+    private void abortTransaction(BookingTransaction bookingTransaction) {
+        Firestore db = firestore;
+        ApiFuture<Void> future = db.runTransaction(transaction -> {
+            for (String flightId : bookingTransaction.getFlightIds()) {
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "status", "available");
+            }
+
+            for (String hotelId : bookingTransaction.getHotelIds()) {
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "status", "available");
+            }
+
+            DocumentReference userRef = db.collection("users").document(bookingTransaction.getUserId()).collection("bookings").document(bookingTransaction.getTransactionId());
+            transaction.update(userRef, "status", "failed");
+
+            return null;
+        });
+
+        ApiFutures.addCallback(future, new ApiFutureCallback<Void>() {
+            @Override
+            public void onSuccess(Void result) {
+                logger.info("Transaction aborted successfully");
+            }
+
+            @Override
+            public void onFailure(Throwable t) {
+                logger.error("Transaction abort failed", t);
+            }
+        }, Runnable::run);
     }
 
     public ApiFuture<WriteResult> updateTravelPackage(String id, Map<String, Object> data) {
