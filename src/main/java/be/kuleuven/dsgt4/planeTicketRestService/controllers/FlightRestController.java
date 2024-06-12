@@ -9,13 +9,13 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.google.gson.Gson;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 import java.util.Optional;
-import com.google.gson.Gson;
-
 
 @RestController
 @RequestMapping("/flights")
@@ -34,17 +34,17 @@ public class FlightRestController {
         }
         List<EntityModel<Flight>> flights = flightRepository.getAllFlights().stream()
                 .map(flight -> EntityModel.of(flight,
-                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(flight.getId(), key)).withSelfRel()))
+                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlight(flight.getId().toString(), key)).withSelfRel()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(CollectionModel.of(flights, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(FlightRestController.class).getFlights(key)).withSelfRel()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EntityModel<Flight>> getFlight(@PathVariable Long id, @RequestParam String key) {
+    public ResponseEntity<EntityModel<Flight>> getFlight(@PathVariable String id, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        Optional<Flight> optionalFlight = flightRepository.getFlightById(id);
+        Optional<Flight> optionalFlight = flightRepository.getFlightById(Long.valueOf(id));
         if (optionalFlight.isPresent()) {
             Flight flight = optionalFlight.get();
             return ResponseEntity.ok(EntityModel.of(flight,
@@ -59,7 +59,9 @@ public class FlightRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = flightRepository.bookFlight(bookingDetails);
+        Long flightId = Long.valueOf(bookingDetails.get("flightId").toString());
+        int seats = (int) bookingDetails.get("seatsBooked");
+        boolean success = flightRepository.bookFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
 
@@ -83,8 +85,25 @@ public class FlightRestController {
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        flightRepository.processBookingRequest(message); // TODO: to be implemented
+        String packageId = (String) message.get("packageId");
+        String userId = (String) message.get("userId");
+        Long flightId = Long.valueOf(message.get("flightId").toString());
+        int seats = (int) message.get("seatsBooked");
+
+        boolean success = flightRepository.bookFlight(flightId, seats);
+
+        // Respond with booking result
+        Map<String, Object> response = new HashMap<>();
+        response.put("packageId", packageId);
+        response.put("userId", userId);
+        response.put("flightId", flightId);
+        response.put("seatsBooked", seats);
+        response.put("success", success);
+
+        // Here you would normally publish the response message to a Pub/Sub topic
+        // For simplicity, we'll just print it
+        System.out.println("Flight booking response: " + response);
+
         return ResponseEntity.ok("Message processed");
     }
-
 }

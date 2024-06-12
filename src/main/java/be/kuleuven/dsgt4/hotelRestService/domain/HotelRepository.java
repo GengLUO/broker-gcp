@@ -1,10 +1,7 @@
 package be.kuleuven.dsgt4.hotelRestService.domain;
-//import org.springframework.data.jpa.repository.JpaRepository;
-
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
-
 import javax.annotation.PostConstruct;
 import java.util.Collection;
 import java.util.HashMap;
@@ -59,5 +56,4 @@ public class HotelRepository {
         }
         return false;
     }
-    // You can add more methods as needed, such as adding, updating, or deleting hotels.
 }

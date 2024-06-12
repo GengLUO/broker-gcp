@@ -92,10 +92,10 @@ class FirestoreController {
         return docRef.delete();
     }
 
-    @GetMapping("/getTravelPackages/{customerId}")
-    public ApiFuture<QuerySnapshot> getTravelPackagesByCustomer(@PathVariable String customerId) {
-        logger.info("Fetching travel packages for customerId: {}", customerId);
-        return firestore.collection("travelPackages").whereEqualTo("customerId", customerId).get();
+    @GetMapping("/getTravelPackages/{userId}")
+    public ApiFuture<QuerySnapshot> getTravelPackagesByUser(@PathVariable String userId) {
+        logger.info("Fetching travel packages for userId: {}", userId);
+        return firestore.collection("users").document(userId).collection("bookings").get();
     }
 
     @PostMapping("/addTravelPackage")
