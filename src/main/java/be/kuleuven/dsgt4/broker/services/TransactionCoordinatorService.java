@@ -1,21 +1,20 @@
 package be.kuleuven.dsgt4.broker.services;
 
-import be.kuleuven.dsgt4.broker.domain.BookingResponse;
-import be.kuleuven.dsgt4.broker.domain.BookingTransaction;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
 import com.google.api.core.ApiFutureCallback;
 import com.google.cloud.firestore.*;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import com.google.gson.Gson;
+
+import java.util.Map;
+import java.util.List;
+import java.util.concurrent.ExecutionException;
+
+import be.kuleuven.dsgt4.broker.domain.BookingTransaction;
 
 @Service
 public class TransactionCoordinatorService {
@@ -53,25 +52,27 @@ public class TransactionCoordinatorService {
                 throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
             }
 
-            List<String> flightIds = (List<String>) packageSnapshot.get("flightIds");
-            List<String> hotelIds = (List<String>) packageSnapshot.get("hotelIds");
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
 
             if (!pbftService.initiateConsensus(packageId)) {
                 throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
             }
-            
-            for (String flightId : flightIds) {
+
+            for (Map<String, Object> flight : flights) {
+                String flightId = (String) flight.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "booked", true);
             }
 
-            for (String hotelId : hotelIds) {
+            for (Map<String, Object> hotel : hotels) {
+                String hotelId = (String) hotel.get("hotelId");
                 DocumentReference hotelRef = db.collection("hotels").document(hotelId);
                 transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
             }
 
             String userId = (String) bookingDetails.get("userId");
-            DocumentReference userRef = db.collection("users").document(userId).collection("bookings").document();
+            DocumentReference userRef = db.collection("users").document(userId).collection("bookings").document(packageId);
             transaction.set(userRef, bookingDetails);
 
             return "Travel Package " + packageId + " booked successfully.";
@@ -79,16 +80,17 @@ public class TransactionCoordinatorService {
     }
 
     public void processBookingResponse(String message) {
-        BookingResponse bookingResponse = parseMessage(message);
-        // TODO: the response data does not include the transaction ID
-        ApiFuture<DocumentSnapshot> future = firestore.collection("transactions").document(bookingResponse.getTransactionId()).get();
+        Map<String, Object> bookingResponse = parseMessage(message);
+        String transactionId = (String) bookingResponse.get("transactionId");
+        boolean success = (boolean) bookingResponse.get("success");
+        ApiFuture<DocumentSnapshot> future = firestore.collection("transactions").document(transactionId).get();
         try {
             DocumentSnapshot document = future.get();
             if (document.exists()) {
                 BookingTransaction bookingTransaction = document.toObject(BookingTransaction.class);
 
-                if (bookingResponse.isSuccess()) {
-                    if (pbftService.initiateConsensus(bookingResponse.getTransactionId())) {
+                if (success) {
+                    if (pbftService.initiateConsensus(transactionId)) {
                         commitTransaction(bookingTransaction);
                     } else {
                         abortTransaction(bookingTransaction);
@@ -97,26 +99,30 @@ public class TransactionCoordinatorService {
                     abortTransaction(bookingTransaction);
                 }
             } else {
-                logger.error("Transaction not found for ID: " + bookingResponse.getTransactionId());
+                logger.error("Transaction not found for ID: " + transactionId);
             }
         } catch (InterruptedException | ExecutionException e) {
             logger.error("Error processing booking response: ", e);
         }
     }
 
-    private BookingResponse parseMessage(String message) {
-        return gson.fromJson(message, BookingResponse.class);
+    private Map<String, Object> parseMessage(String message) {
+        return gson.fromJson(message, Map.class);
     }
 
     private void commitTransaction(BookingTransaction bookingTransaction) {
         Firestore db = firestore;
         ApiFuture<Void> future = db.runTransaction(transaction -> {
-            for (String flightId : bookingTransaction.getFlightIds()) {
+            for (String flightJson : bookingTransaction.getFlightIds()) {
+                Map<String, Object> flightMap = parseJson(flightJson);
+                String flightId = (String) flightMap.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "status", "confirmed");
             }
 
-            for (String hotelId : bookingTransaction.getHotelIds()) {
+            for (String hotelJson : bookingTransaction.getHotelIds()) {
+                Map<String, Object> hotelMap = parseJson(hotelJson);
+                String hotelId = (String) hotelMap.get("hotelId");
                 DocumentReference hotelRef = db.collection("hotels").document(hotelId);
                 transaction.update(hotelRef, "status", "confirmed");
             }
@@ -143,12 +149,16 @@ public class TransactionCoordinatorService {
     private void abortTransaction(BookingTransaction bookingTransaction) {
         Firestore db = firestore;
         ApiFuture<Void> future = db.runTransaction(transaction -> {
-            for (String flightId : bookingTransaction.getFlightIds()) {
+            for (String flightJson : bookingTransaction.getFlightIds()) {
+                Map<String, Object> flightMap = parseJson(flightJson);
+                String flightId = (String) flightMap.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "status", "available");
             }
 
-            for (String hotelId : bookingTransaction.getHotelIds()) {
+            for (String hotelJson : bookingTransaction.getHotelIds()) {
+                Map<String, Object> hotelMap = parseJson(hotelJson);
+                String hotelId = (String) hotelMap.get("hotelId");
                 DocumentReference hotelRef = db.collection("hotels").document(hotelId);
                 transaction.update(hotelRef, "status", "available");
             }
@@ -170,6 +180,10 @@ public class TransactionCoordinatorService {
                 logger.error("Transaction abort failed", t);
             }
         }, Runnable::run);
+    }
+
+    private Map<String, Object> parseJson(String json) {
+        return gson.fromJson(json, Map.class);
     }
 
     public ApiFuture<WriteResult> updateTravelPackage(String id, Map<String, Object> data) {

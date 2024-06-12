@@ -9,12 +9,13 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.google.gson.Gson;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 import java.util.Optional;
-import com.google.gson.Gson;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/hotels")
@@ -33,17 +34,17 @@ public class HotelRestController {
         }
         List<EntityModel<Hotel>> hotels = hotelRepository.getAllHotels().stream()
                 .map(hotel -> EntityModel.of(hotel,
-                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotel(hotel.getId(), key)).withSelfRel()))
+                        WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotel(hotel.getId().toString(), key)).withSelfRel()))
                 .collect(Collectors.toList());
         return ResponseEntity.ok(CollectionModel.of(hotels, WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).getHotels(key)).withSelfRel()));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<EntityModel<Hotel>> getHotel(@PathVariable Long id, @RequestParam String key) {
+    public ResponseEntity<EntityModel<Hotel>> getHotel(@PathVariable String id, @RequestParam String key) {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        Optional<Hotel> optionalHotel = hotelRepository.getHotelById(id);
+        Optional<Hotel> optionalHotel = hotelRepository.getHotelById(Long.valueOf(id));
         if (optionalHotel.isPresent()) {
             Hotel hotel = optionalHotel.get();
             return ResponseEntity.ok(EntityModel.of(hotel,
@@ -58,7 +59,9 @@ public class HotelRestController {
         if (!API_KEY.equals(key)) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
-        boolean success = hotelRepository.bookHotel(bookingDetails);
+        Long hotelId = Long.valueOf(bookingDetails.get("hotelId").toString());
+        int rooms = (int) bookingDetails.get("roomsBooked");
+        boolean success = hotelRepository.bookHotel(hotelId, rooms);
         return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
     }
 
@@ -82,7 +85,25 @@ public class HotelRestController {
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        hotelRepository.processBookingRequest(message); // TODO: to be implemented
+        String packageId = (String) message.get("packageId");
+        String userId = (String) message.get("userId");
+        Long hotelId = Long.valueOf(message.get("hotelId").toString());
+        int rooms = (int) message.get("roomsBooked");
+
+        boolean success = hotelRepository.bookHotel(hotelId, rooms);
+
+        // Respond with booking result
+        Map<String, Object> response = new HashMap<>();
+        response.put("packageId", packageId);
+        response.put("userId", userId);
+        response.put("hotelId", hotelId);
+        response.put("roomsBooked", rooms);
+        response.put("success", success);
+
+        // Here you would normally publish the response message to a Pub/Sub topic
+        // For simplicity, we'll just print it
+        System.out.println("Hotel booking response: " + response);
+
         return ResponseEntity.ok("Message processed");
     }
 }

@@ -6,77 +6,42 @@ import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
 import com.google.pubsub.v1.*;
-
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-
 import java.io.IOException;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.core.type.TypeReference;
-
 import be.kuleuven.dsgt4.broker.domain.TravelPackage;
 import be.kuleuven.dsgt4.broker.domain.ItemType;
-
 
 @Service
 public class BrokerPublisherService {
 
-//    TODO: these can be env variables
+    // Environment variables
     private static final String PROJECT_ID = "broker-da44b";
-    private static final String TOPIC_ID = "your-topic-id";
+    private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final List<TravelPackage> travelPackages = new ArrayList<>();
     private final TransactionCoordinatorService transactionCoordinatorService;
     private final Gson gson = new Gson();
-    //For now, we have:
-//    1. hotel-booking-requests
-//    2. flight-booking-requests
-    private static final String PUSH_ENDPOINT = "https://my-test-project.appspot.com/push";
 
     @Autowired
     public BrokerPublisherService(TransactionCoordinatorService transactionCoordinatorService) {
         this.transactionCoordinatorService = transactionCoordinatorService;
     }
-    
-    //use a param topicId
-    //方法返回一个字符串，即发布消息后, 返回的消息 ID
+
+    // Publish a message to a specific topic
     public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
         try {
-            // Create a publisher instance with default settings bound to the topic
             publisher = Publisher.newBuilder(topicName).build();
-            ByteString data = ByteString.copyFromUtf8(message); //将字符串消息转换为 ByteString 对象，这是 Google Protobuf 使用的字节串表示形式
-            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build(); //PubsubMessage 是 Google Cloud Pub/Sub 中的消息格式。
-
-            // Once published, returns a server-assigned message id (unique within the topic)
-            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
-            String messageId = messageIdFuture.get(); //调用 get() 方法阻塞当前线程，直到消息发布完成，并获取服务器分配的消息 ID
-            System.out.println("Published message ID: " + messageId);
-            return messageId;
-        } finally {
-            if (publisher != null) {
-                // When finished with the publisher, shutdown to free up resources.
-                publisher.shutdown();
-                //等待 Publisher 关闭完成，最长等待 1 分钟。确保所有发布操作完成后再关闭 Publisher
-                publisher.awaitTermination(1, TimeUnit.MINUTES);
-            }
-        }
-    }
-
-    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
-        TopicName topicName = TopicName.of(PROJECT_ID, topicId);
-        Publisher publisher = null;
-        try {
-            publisher = Publisher.newBuilder(topicName).build();
-            String jsonMessage = gson.toJson(message);
-            ByteString data = ByteString.copyFromUtf8(jsonMessage);
+            ByteString data = ByteString.copyFromUtf8(message);
             PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
             ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
             String messageId = messageIdFuture.get();
@@ -90,15 +55,17 @@ public class BrokerPublisherService {
         }
     }
 
-    public static void createPushSubscriptionExample(
-            String projectId, String subscriptionId, String topicId, String pushEndpoint)
-            throws IOException {
+    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
+        String jsonMessage = gson.toJson(message);
+        return publishMessage(topicId, jsonMessage);
+    }
+
+    public static void createPushSubscriptionExample(String projectId, String subscriptionId, String topicId, String pushEndpoint) throws IOException {
         try (SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create()) {
             TopicName topicName = TopicName.of(projectId, topicId);
             SubscriptionName subscriptionName = SubscriptionName.of(projectId, subscriptionId);
             PushConfig pushConfig = PushConfig.newBuilder().setPushEndpoint(pushEndpoint).build();
-            Subscription subscription =
-                    subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
+            Subscription subscription = subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
             System.out.println("Created push subscription: " + subscription.getName());
         }
     }
@@ -107,130 +74,90 @@ public class BrokerPublisherService {
         transactionCoordinatorService.processBookingResponse(message);
     }
 
-    /***************All methods below are the real Broker services***************/
+    // Methods related to TravelPackage management
     public TravelPackage createTravelPackage(String userId) {
-        TravelPackage travelPackage = new TravelPackage(userId);
+        String packageId = generatePackageId();
+        TravelPackage travelPackage = new TravelPackage(userId, packageId);
         travelPackages.add(travelPackage);
         return travelPackage;
     }
 
-    public TravelPackage getTravelPackage(String userId) {
-        for (TravelPackage travelPackage : travelPackages) {
-            if (travelPackage.getUserId().equals(userId)) {
-                return travelPackage;
-            }
-        }
-        return null;
+    public TravelPackage getTravelPackage(String userId, String packageId) {
+        return travelPackages.stream()
+                .filter(pkg -> pkg.getUserId().equals(userId) && pkg.getPackageId().equals(packageId))
+                .findFirst()
+                .orElse(null);
     }
 
-    public boolean bookTravelPackage(String userId) {
-        TravelPackage travelPackage = getTravelPackage(userId);
-        if (travelPackage == null) {
-            return false;
-        }
-
-        List<String> bookedFlights = new ArrayList<>();
-        List<String> bookedHotels = new ArrayList<>();
-
-        try {
-            for (String flightJson : travelPackage.getFlights()) {
-                Map<String, Object> flightMap = parseJson(flightJson);
-                Long flightId = (Long) flightMap.get("id");
-                int availableSeats = (int) flightMap.get("availableSeats");
-                boolean booked = bookFlight(flightId, availableSeats);
-                if (!booked) {
-                    throw new Exception("Failed to book flight: " + flightId);
-                }
-                bookedFlights.add(flightJson);
-            }
-
-            for (String hotelJson : travelPackage.getHotels()) {
-                Map<String, Object> hotelMap = parseJson(hotelJson);
-                Long hotelId = (Long) hotelMap.get("id");
-                int availableRooms = (int) hotelMap.get("availableRooms");
-                boolean booked = bookHotel(hotelId, availableRooms);
-                if (!booked) {
-                    throw new Exception("Failed to book hotel: " + hotelId);
-                }
-                bookedHotels.add(hotelJson);
-            }
-
+    public boolean clearTravelPackage(String userId, String packageId) {
+        TravelPackage travelPackage = getTravelPackage(userId, packageId);
+        if (travelPackage != null) {
+            travelPackage.clear();
             return true;
-        } catch (Exception e) {
-            System.err.println(e.getMessage());
-            for (String flightJson : bookedFlights) {
+        }
+        return false;
+    }
+
+    public boolean cancelTravelPackage(String userId, String packageId) {
+        TravelPackage travelPackage = getTravelPackage(userId, packageId);
+        if (travelPackage != null) {
+            travelPackage.getFlights().forEach(flightJson -> {
                 Map<String, Object> flightMap = parseJson(flightJson);
-                Long flightId = (Long) flightMap.get("id");
-                int availableSeats = (int) flightMap.get("availableSeats");
+                String flightId = (String) flightMap.get("flightId");
+                int availableSeats = (int) flightMap.get("seats");
                 cancelFlight(flightId, availableSeats);
-            }
-            for (String hotelJson : bookedHotels) {
+            });
+
+            travelPackage.getHotels().forEach(hotelJson -> {
                 Map<String, Object> hotelMap = parseJson(hotelJson);
-                Long hotelId = (Long) hotelMap.get("id");
-                int availableRooms = (int) hotelMap.get("availableRooms");
+                String hotelId = (String) hotelMap.get("hotelId");
+                int availableRooms = (int) hotelMap.get("rooms");
                 cancelHotel(hotelId, availableRooms);
-            }
-            return false;
+            });
+
+            travelPackage.clear();
+            return true;
         }
+        return false;
     }
 
-    public boolean clearTravelPackage(String userId) {
-        for (TravelPackage travelPackage : travelPackages) {
-            if (travelPackage.getUserId().equals(userId)) {
-                travelPackage.clear();
-            }
-        }
-        return true;
-    }
-
-    public boolean cancelTravelPackage(String userId) {
-        for (TravelPackage travelPackage : travelPackages) {
-            if (travelPackage.getUserId().equals(userId)) {
-                for (String flightJson : travelPackage.getFlights()) {
-                    Map<String, Object> flightMap = parseJson(flightJson);
-                    Long flightId = (Long) flightMap.get("id");
-                    int availableSeats = (int) flightMap.get("availableSeats");
-                    cancelFlight(flightId, availableSeats);
-                }
-                for (String hotelJson : travelPackage.getHotels()) {
-                    Map<String, Object> hotelMap = parseJson(hotelJson);
-                    Long hotelId = (Long) hotelMap.get("id");
-                    int availableRooms = (int) hotelMap.get("availableRooms");
-                    cancelHotel(hotelId, availableRooms);
-                }
-                travelPackage.clear();
-            }
-        }
-        return true;
-    }
-
-    public boolean cancelItemInTravelPackage(String userId, ItemType type, Long itemId) {
-        TravelPackage travelPackage = getTravelPackage(userId);
+    public boolean cancelItemInTravelPackage(String userId, String packageId, ItemType type, String itemId) {
+        TravelPackage travelPackage = getTravelPackage(userId, packageId);
         if (travelPackage == null) {
             return false;
         }
 
         if (type == ItemType.FLIGHT) {
-            for (String flightJson : travelPackage.getFlights()) {
-                Map<String, Object> flightMap = parseJson(flightJson);
-                Long flightId = (Long) flightMap.get("id");
-                if (flightId.equals(itemId)) {
-                    int availableSeats = (int) flightMap.get("availableSeats");
-                    cancelFlight(flightId, availableSeats);
-                    travelPackage.removeFlight(flightJson);
-                    return true;
-                }
-            }
+            return cancelFlightInPackage(travelPackage, itemId);
         } else if (type == ItemType.HOTEL) {
-            for (String hotelJson : travelPackage.getHotels()) {
-                Map<String, Object> hotelMap = parseJson(hotelJson);
-                Long hotelId = (Long) hotelMap.get("id");
-                if (hotelId.equals(itemId)) {
-                    int availableRooms = (int) hotelMap.get("availableRooms");
-                    cancelHotel(hotelId, availableRooms);
-                    travelPackage.removeHotel(hotelJson);
-                    return true;
-                }
+            return cancelHotelInPackage(travelPackage, itemId);
+        }
+        return false;
+    }
+
+    private boolean cancelFlightInPackage(TravelPackage travelPackage, String flightId) {
+        for (String flightJson : travelPackage.getFlights()) {
+            Map<String, Object> flightMap = parseJson(flightJson);
+            String currentFlightId = (String) flightMap.get("flightId");
+            if (currentFlightId.equals(flightId)) {
+                int availableSeats = (int) flightMap.get("seats");
+                cancelFlight(flightId, availableSeats);
+                travelPackage.removeFlight(flightJson);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean cancelHotelInPackage(TravelPackage travelPackage, String hotelId) {
+        for (String hotelJson : travelPackage.getHotels()) {
+            Map<String, Object> hotelMap = parseJson(hotelJson);
+            String currentHotelId = (String) hotelMap.get("hotelId");
+            if (currentHotelId.equals(hotelId)) {
+                int availableRooms = (int) hotelMap.get("rooms");
+                cancelHotel(hotelId, availableRooms);
+                travelPackage.removeHotel(hotelJson);
+                return true;
             }
         }
         return false;
@@ -256,13 +183,13 @@ public class BrokerPublisherService {
         return publishMessage("hotel-retrieve-requests", "{}");
     }
 
-    public String getHotel(Long id) throws IOException, ExecutionException, InterruptedException {
-        return publishMessage("hotel-retrieve-requests", "{\"id\":" + id + "}");
+    public String getHotel(String id) throws IOException, ExecutionException, InterruptedException {
+        return publishMessage("hotel-retrieve-requests", "{\"id\":\"" + id + "\"}");
     }
 
-    public boolean bookHotel(Long hotelId, int rooms) {
+    public boolean bookHotel(String hotelId, int rooms) {
         try {
-            String bookingDetails = "{\"hotelId\":" + hotelId + ",\"rooms\":" + rooms + "}";
+            String bookingDetails = "{\"hotelId\":\"" + hotelId + "\",\"rooms\":" + rooms + "}";
             publishMessage("hotel-booking-requests", bookingDetails);
             return true;
         } catch (Exception e) {
@@ -274,13 +201,13 @@ public class BrokerPublisherService {
         return publishMessage("flight-retrieve-requests", "{}");
     }
 
-    public String getFlight(Long id) throws IOException, ExecutionException, InterruptedException {
-        return publishMessage("flight-retrieve-requests", "{\"id\":" + id + "}");
+    public String getFlight(String id) throws IOException, ExecutionException, InterruptedException {
+        return publishMessage("flight-retrieve-requests", "{\"id\":\"" + id + "\"}");
     }
 
-    public boolean bookFlight(Long flightId, int seats) {
+    public boolean bookFlight(String flightId, int seats) {
         try {
-            String bookingDetails = "{\"flightId\":" + flightId + ",\"seats\":" + seats + "}";
+            String bookingDetails = "{\"flightId\":\"" + flightId + "\",\"seats\":" + seats + "}";
             publishMessage("flight-booking-requests", bookingDetails);
             return true;
         } catch (Exception e) {
@@ -288,9 +215,9 @@ public class BrokerPublisherService {
         }
     }
 
-    public boolean cancelFlight(Long flightId, int seats) {
+    public boolean cancelFlight(String flightId, int seats) {
         try {
-            String cancelDetails = "{\"flightId\":" + flightId + ",\"seats\":" + seats + "}";
+            String cancelDetails = "{\"flightId\":\"" + flightId + "\",\"seats\":" + seats + "}";
             publishMessage("flight-cancel-requests", cancelDetails);
             return true;
         } catch (Exception e) {
@@ -298,9 +225,9 @@ public class BrokerPublisherService {
         }
     }
 
-    public boolean cancelHotel(Long hotelId, int rooms) {
+    public boolean cancelHotel(String hotelId, int rooms) {
         try {
-            String cancelDetails = "{\"hotelId\":" + hotelId + ",\"rooms\":" + rooms + "}";
+            String cancelDetails = "{\"hotelId\":\"" + hotelId + "\",\"rooms\":" + rooms + "}";
             publishMessage("hotel-cancel-requests", cancelDetails);
             return true;
         } catch (Exception e) {
@@ -314,5 +241,9 @@ public class BrokerPublisherService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse JSON", e);
         }
+    }
+
+    private String generatePackageId() {
+        return "package-" + System.currentTimeMillis(); // Simple ID generation logic
     }
 }
