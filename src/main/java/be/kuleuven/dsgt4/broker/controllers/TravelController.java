@@ -15,26 +15,9 @@ public class TravelController {
         return "forward:/index.html";
     }
 
-    @PostMapping("/login")
-    public String handleLogin(@RequestParam("email") String email,
-                              @RequestParam("password") String password,
-                              Model model) {
-        if (validateEmail(email) && validatePassword(password)) {
-            model.addAttribute("email", email);
-            model.addAttribute("name", "John Doe"); // Example name, replace with actual logic
-            return "dashboard";
-        } else {
-            model.addAttribute("error", "Invalid email or password");
-            return "index";
-        }
-    }
-
-
     @GetMapping("/profile")
     public String showProfile(Model model) {
-        // Replace with actual logic to get user details
-        model.addAttribute("email", "user@example.com");
-        model.addAttribute("name", "John Doe");
+
         return "forward:/profile.html";
     }
 
@@ -43,12 +26,8 @@ public class TravelController {
         return "forward:/settings.html";
     }
 
-    @PostMapping("/updateSettings")
-    public String updateSettings(@RequestParam("newSetting") String newSetting, Model model) {
-        // Add logic to update settings
-        model.addAttribute("message", "Settings updated to: " + newSetting);
-        return "settings";
-    }
+
+
     @GetMapping("/mybookings")
     public String showBookings() {
         return "forward:/mybookings.html";
@@ -58,20 +37,4 @@ public class TravelController {
         return "forward:/dashboard.html";
     }
 
-    @PostMapping("/reserve")
-    public String handleReservation(@RequestParam("hotel") String hotel, Model model) {
-        // Add logic to handle reservation
-        model.addAttribute("message", "Reserved at " + hotel);
-        return "dashboard";
-    }
-
-    private boolean validateEmail(String email) {
-        // Simple email validation logic
-        return email != null && email.contains("@");
-    }
-
-    private boolean validatePassword(String password) {
-        // Simple password validation logic
-        return password != null && !password.isEmpty();
-    }
 }
