@@ -24,7 +24,9 @@ public class HotelService {
                 .orElseThrow(() -> new HotelNotFoundException(id));
     }
 
-    public boolean bookHotel(Long hotelId, int rooms) {
+    public boolean bookHotel(Map<String, Object> bookingDetails) {
+        Long hotelId = ((Number) bookingDetails.get("hotelId")).longValue();
+        int rooms = (int) bookingDetails.get("rooms");
         return hotelRepository.bookHotel(hotelId, rooms);
     }
 
@@ -39,7 +41,7 @@ public class HotelService {
     public void processBookingRequest(Map<String, Object> message) {
         Long hotelId = ((Number) message.get("hotelId")).longValue();
         int rooms = (int) message.get("rooms");
-        boolean success = bookHotel(hotelId, rooms);
+        boolean success = bookHotel(message);
         if (!success) {
             throw new RuntimeException("Booking failed for hotel ID: " + hotelId);
         }
