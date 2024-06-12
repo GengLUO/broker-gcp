@@ -6,7 +6,7 @@ import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
 import com.google.api.core.ApiFutureCallback;
 import com.google.cloud.firestore.*;
-import com.google.cloud.firestore.FieldValue;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
@@ -23,6 +23,9 @@ public class TransactionCoordinatorService {
 
     @Autowired
     private Firestore firestore;
+
+    @Autowired
+    private PBFTService pbftService;
 
     public ApiFuture<WriteResult> addTravelPackage(Map<String, Object> data) {
         logger.info("Adding travel package");
@@ -50,6 +53,11 @@ public class TransactionCoordinatorService {
             List<String> flightIds = (List<String>) packageSnapshot.get("flightIds");
             List<String> hotelIds = (List<String>) packageSnapshot.get("hotelIds");
 
+            // Use PBFT to ensure consensus before proceeding
+            if (!pbftService.initiateConsensus(packageId)) {
+                throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
+            }
+            
             for (String flightId : flightIds) {
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "booked", true);
@@ -78,7 +86,11 @@ public class TransactionCoordinatorService {
                 BookingTransaction bookingTransaction = document.toObject(BookingTransaction.class);
 
                 if (bookingResponse.isSuccess()) {
-                    commitTransaction(bookingTransaction);
+                    if (pbftService.initiateConsensus(bookingResponse.getTransactionId())) {
+                        commitTransaction(bookingTransaction);
+                    } else {
+                        abortTransaction(bookingTransaction);
+                    }
                 } else {
                     abortTransaction(bookingTransaction);
                 }
@@ -196,3 +208,5 @@ public class TransactionCoordinatorService {
         });
     }
 }
+
+
