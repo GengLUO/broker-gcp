@@ -23,3 +23,6 @@ Desktop.ini
 
 # linux operating system files
 *.swp
+
+# remove node modules folder
+node_modules/
