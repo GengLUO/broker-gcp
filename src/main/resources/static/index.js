@@ -94,9 +94,9 @@ function wireGuiUpEvents() {
         userCredential.user.getIdToken().then((token) => {
           console.log("ID Token:", token);
           // You can use this token to make authenticated requests
-
+            fetchData(token);
           // Redirect to the dashboard page
-          window.location.href = 'dashboard.html';
+//          window.location.href = 'dashboard.html';
         });
       })
       .catch(function (error) {
@@ -173,7 +173,7 @@ function wireUpAuthChange() {
       fetchData(token);
 
       // Redirect to the dashboard page
-      window.location.href = 'dashboard.html';
+//      window.location.href = 'dashboard.html';
     });
 
   });
@@ -240,4 +240,31 @@ function whoami(token) {
     });
 
 }
+
+document.getElementById("getAllOrdersBtn").addEventListener("click", function () {
+    console.log("button clicked");
+  const auth = getAuth();
+  console.log("getauth");
+  auth.currentUser.getIdToken(true).then(function(token) {
+  console.log("inside");
+    console.log(token);
+    fetch('/api/getAllOrders', {
+      method: 'GET', // You might need to adjust this depending on your API requirements
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to fetch orders.");
+    });
+  }).catch(function(error) {
+    console.log('Error fetching token:', error);
+    alert("Authentication error. Please log in again.");
+  });
+});
 
