@@ -56,4 +56,13 @@ public class FlightRepository {
         }
         return false;
     }
+
+    public boolean updateFlightBooking(Long flightId, int newSeats) {
+        Flight flight = flights.get(flightId);
+        if (flight != null) {
+            flight.setAvailableSeats(flight.getAvailableSeats() + newSeats);
+            return true;
+        }
+        return false;
+    }
 }

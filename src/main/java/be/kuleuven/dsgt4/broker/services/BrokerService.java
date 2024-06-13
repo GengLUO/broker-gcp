@@ -2,6 +2,58 @@ package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.gson.Gson;
+import com.google.protobuf.ByteString;
+import com.google.pubsub.v1.PubsubMessage;
+import com.google.pubsub.v1.TopicName;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import java.io.IOException;
+import java.util.Map;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
+
+@Service
+public class BrokerService {
+
+    private static final String PROJECT_ID = "broker-da44b";
+    private final Gson gson = new Gson();
+
+    @Autowired
+    public BrokerService() {}
+
+    public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
+        TopicName topicName = TopicName.of(PROJECT_ID, topicId);
+        Publisher publisher = null;
+        try {
+            publisher = Publisher.newBuilder(topicName).build();
+            ByteString data = ByteString.copyFromUtf8(message);
+            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
+            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+            String messageId = messageIdFuture.get();
+            System.out.println("Published message ID: " + messageId);
+            return messageId;
+        } finally {
+            if (publisher != null) {
+                publisher.shutdown();
+                publisher.awaitTermination(1, TimeUnit.MINUTES);
+            }
+        }
+    }
+
+    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
+        String jsonMessage = gson.toJson(message);
+        return publishMessage(topicId, jsonMessage);
+    }
+}
+
+
+/**
+package be.kuleuven.dsgt4.broker.services;
+
+import com.google.api.core.ApiFuture;
+import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
@@ -247,3 +299,4 @@ public class BrokerPublisherService {
         return "package-" + System.currentTimeMillis(); // Simple ID generation logic
     }
 }
+*/
