@@ -2,6 +2,7 @@ package be.kuleuven.dsgt4.planeTicketRestService.domain;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;
+
 import javax.annotation.PostConstruct;
 import java.util.Collection;
 import java.util.HashMap;
