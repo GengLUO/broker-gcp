@@ -6,6 +6,7 @@ import be.kuleuven.dsgt4.broker.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AuthorizationServiceException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
@@ -43,12 +44,8 @@ public class UserRestController {
     }
 
     @GetMapping("/getAllOrders")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public String getAllOrders() {
-        System.out.println("Inside getAllOrders");
-        var user = WebSecurityConfig.getUser();
-        System.out.println(user.getRole());
-        if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
-        System.out.println("It is a manager");
         return "You are a manager, and there are the orders";
     }
 

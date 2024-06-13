@@ -35,8 +35,6 @@ public class SecurityFilter extends OncePerRequestFilter {
 
         if (authorizationHeader != null && authorizationHeader.startsWith("Bearer ")) {
             String token = authorizationHeader.substring(7); // Remove "Bearer " prefix
-            System.out.println("Authorization Header: " + authorizationHeader);
-            System.out.println("Extracted Token: " + token);
             try {
                 JwkProvider provider = new JwkConfiguration().jwkProvider();
                 DecodedJWT jwt = JWT.decode(token);
@@ -53,6 +51,7 @@ public class SecurityFilter extends OncePerRequestFilter {
 //          TODO: handle users with multiple roles
                 List<String> roles = jwt.getClaim("roles").asList(String.class);
                 String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user" ;
+                System.out.println("A " + role + " just logged in");
                 User user = new User(email, role);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
@@ -109,8 +108,10 @@ public class SecurityFilter extends OncePerRequestFilter {
         @Override
         public Collection<? extends GrantedAuthority> getAuthorities() {
             if (user.isManager()) {
-                return List.of(new SimpleGrantedAuthority("manager"));
+                System.out.println("THIS USER IS A MANAGER");
+                return List.of(new SimpleGrantedAuthority("ROLE_MANAGER"));
             } else {
+                System.out.println("THIS USER IS NOT A MANAGER");
                 return new ArrayList<>();
             }
         }
