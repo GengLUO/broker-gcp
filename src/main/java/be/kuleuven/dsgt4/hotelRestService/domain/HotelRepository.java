@@ -57,4 +57,13 @@ public class HotelRepository {
         }
         return false;
     }
+
+    public boolean updateHotelBooking(Long hotelId, int newRooms) {
+        Hotel hotel = hotels.get(hotelId);
+        if (hotel != null) {
+            hotel.setAvailableRooms(hotel.getAvailableRooms() + newRooms);
+            return true;
+        }
+        return false;
+    }
 }
