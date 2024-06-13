@@ -11,7 +11,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.google.gson.Gson;
 
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -85,25 +84,40 @@ public class HotelRestController {
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        String packageId = (String) message.get("packageId");
-        String userId = (String) message.get("userId");
+        String messageType = (String) message.get("type");
+        switch (messageType) {
+            case "hotel-add-requests":
+                return handleHotelAddRequest(message);
+            case "hotel-cancel-requests":
+                return handleHotelCancelRequest(message);
+            case "hotel-update-requests":
+                return handleHotelUpdateRequest(message);
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
+        }
+    }
+
+    private ResponseEntity<String> handleHotelAddRequest(Map<String, Object> message) {
         Long hotelId = Long.valueOf(message.get("hotelId").toString());
         int rooms = (int) message.get("roomsBooked");
-
         boolean success = hotelRepository.bookHotel(hotelId, rooms);
 
-        // Respond with booking result
-        Map<String, Object> response = new HashMap<>();
-        response.put("packageId", packageId);
-        response.put("userId", userId);
-        response.put("hotelId", hotelId);
-        response.put("roomsBooked", rooms);
-        response.put("success", success);
+        return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+    }
 
-        // Here you would normally publish the response message to a Pub/Sub topic
-        // For simplicity, we'll just print it
-        System.out.println("Hotel booking response: " + response);
+    private ResponseEntity<String> handleHotelCancelRequest(Map<String, Object> message) {
+        Long hotelId = Long.valueOf(message.get("hotelId").toString());
+        int rooms = (int) message.get("roomsBooked");
+        boolean success = hotelRepository.cancelHotel(hotelId, rooms);
 
-        return ResponseEntity.ok("Message processed");
+        return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
+
+    private ResponseEntity<String> handleHotelUpdateRequest(Map<String, Object> message) {
+        Long hotelId = Long.valueOf(message.get("hotelId").toString());
+        int newRooms = (int) message.get("newRoomsBooked");
+        boolean success = hotelRepository.updateHotelBooking(hotelId, newRooms);
+
+        return success ? ResponseEntity.ok("Hotel booking updated") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Update failed");
     }
 }

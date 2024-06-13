@@ -53,7 +53,7 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
 
 #### Step 1: Client Requests Travel Packages
 - **Client -> BookingController**: Client sends a request to get avaialble flgiht and hotels. the booking controller first initiate and create an mepty travel package `TravelPackage` class with user ID.
-- **BookingController -> Pub/Sub System**: `BookingController` publishes messages to Hotel and Flight Pub/Sub topics.
+- **BookingController -> Pub/Sub System**: `BrokerPublisherService` publishes messages to Hotel and Flight Pub/Sub topics.
     - assuming desired booking details message format (json format)
         ```json
         {
@@ -84,7 +84,7 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
             "rooms": 2,
         }
         ```
-- **Pub/Sub System -> BookingController**: `BookingController` aggregates the responses and returns the availiable hotels and flights with respective ID to the client for the client to select.
+- **Pub/Sub System -> BookingController**: `BrokerPublisherService` may be getting the response with avaialable flights and hotels in json format from subcriber and `BookingController` aggregates the responses and returns the availiable hotels and flights with respective ID to the client for the client to select from.
     - assuming returned avaialbe message format (json format) for client:
         ```json
         {
@@ -98,8 +98,8 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
         ```
 
 #### Step 2: Client Initiates Booking
-- **Client -> BookingController**: Client manipulate to add or remove the prefered flights and add to its empty travel package class `TravelPackage` sends a request to book a travel package.
-- **BookingController -> TransactionCoordinatorService**: `BookingController` forwards the booking request to `TransactionCoordinatorService`.
+- **Client -> BookingController**: Client manipulate to add or remove the prefered flights, the `BookingController` should add the selected flights and hotels to its empty travel package class `TravelPackage` for the `BrokerPublisherService` communicate with the suppliers and `TransactionCoordinatorService` book tems in the travel package.
+- **BookingController -> TransactionCoordinatorService** and **BrokerPublisherService**: `BookingController` delegate the booking  to `TransactionCoordinatorService` since the travel package booking invovles multiple suppliers while the BrokerPublisherService publish the booking details to the Pub/Sub system for the suppliers to subscribe and respond.
     - assuming booking details message format (json format)
         ```json
         {
@@ -123,7 +123,8 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
         ```
 - **TransactionCoordinatorService -> 2PC**: `TransactionCoordinatorService` initiates a 2PC to ensure all involved services (Hotel and Flight) can commit to the booking.
     - two phase commit to ensure that all services are ready to commit the transaction or abort if any service is not ready.
-- **TransactionCoordinatorService -> Firestore**: `TransactionCoordinatorService` stores the booking details under the user's document in Firestore.
+
+- **TransactionCoordinatorService -> Firestore**: if the transaction succedded, meaning the booking is valid, `TransactionCoordinatorService` should interact with Firestore to store the booking details under the user's document in Firestore.
     - if succeed committing instead of aborting, the transaction coordinator will store the booking details and travel packages in Firestore.
     - Data Model
     
@@ -131,32 +132,18 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
     
     1. **Users Collection**:
        - Each user document contains user-specific details.
-       - Sub-collection `bookings` for storing booked travel packages.
+       - Sub-collection `bookedtravelpackages` for storing booked travel packages.
     
     2. **TravelPackages Collection**:
-       - Documents contain details about each travel package.
+       - Documents contain details about each travel package booked by the user.
+        - details includes the travel package ID, hotel ID, number of rooms, flight ID, number of seats, customer details, etc.
     
-    3. **Bookings Collection**:
-       - Documents for each booking, containing travel package ID, hotel ID, flight ID, customer details, etc.
+
 
 #### Step 3: **User Profile and Customer Management**:
 - **Client -> FirestoreController**: Client manages user profiles and customer-related data.
 - **FirestoreController -> Firestore**: Performs CRUD operations on user and customer data.
     the user needs to select travel packages, add customer details, book from respective suppliers, and update these details, a compound index will help in querying and retrieving the necessary information efficiently.
-    
-    Data Model
-    
-    In Firestore, you can have the following collections and documents:
-    
-    1. **Users Collection**:
-       - Each user document contains user-specific details.
-       - Sub-collection `bookings` for storing booked travel packages.
-    
-    2. **TravelPackages Collection**:
-       - Documents contain details about each travel package.
-    
-    3. **Bookings Collection**:
-       - Documents for each booking, containing travel package ID, hotel ID, flight ID, customer details, etc.
 
 ## Step-by-Step Flow:
 
@@ -176,33 +163,10 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
    - Each service then commits the transaction, updating their state and Firestore with the booking details.
    - If any service votes no, the transaction coordinator sends an abort request, and all services revert any changes.
 
-4. **Ensuring Consistency and Fault Tolerance (RAFT)**:
-   - RAFT is used to ensure that the logs of operations (e.g., bookings) are consistent across all nodes.
-   - If a node fails, RAFT ensures that a new leader is elected, and the state is consistent across the remaining nodes.
-
-5. **Securing Fault Tolerance (PBFT)**:
+4. **Securing Fault Tolerance (PBFT)**:
    - Ensures the system can handle and recover from arbitrary (Byzantine) failures.
    - Requires additional complexity and integration of BFT algorithms.
 
-## Components Overview:
-Correct, the `BookingController` and `BrokerPublisherService` do not directly utilize `BookingResponse` or `BookingTransaction`. These classes are used internally within the `TransactionCoordinatorService` to manage and coordinate the transactions. Here's a summary of their roles:
-
-1. **`BookingController`**:
-   - Handles incoming requests from the client for booking travel packages.
-   - Forwards booking details to the `BrokerPublisherService` to publish messages to the Pub/Sub system.
-
-2. **`BrokerPublisherService`**:
-   - Publishes booking messages to the Pub/Sub system.
-   - Handles incoming push notifications from the Pub/Sub system and forwards them to the `TransactionCoordinatorService`.
-
-3. **`TransactionCoordinatorService`**:
-   - Manages the booking transactions.
-   - Uses `BookingResponse` to parse responses from services.
-   - Uses `BookingTransaction` to store and manage the transaction details in Firestore.
-   - Implements the 2PC protocol to coordinate and commit/abort transactions.
-
-4. **`FirestoreController`**: 
-   - Manages user profiles and customer-related operations.
 
 ## Implementing Fault Tolerance with PBFT
 Given the use cases and applications for PBFT, it should be integrated into critical areas where Byzantine faults can cause significant issues:

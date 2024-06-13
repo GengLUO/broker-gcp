@@ -1,20 +1,18 @@
 package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
-import com.google.api.core.ApiFutures;
-import com.google.api.core.ApiFutureCallback;
 import com.google.cloud.firestore.*;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import com.google.gson.Gson;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 
-import java.util.Map;
+import java.io.IOException;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.ExecutionException;
 
-import be.kuleuven.dsgt4.broker.domain.BookingTransaction;
+import be.kuleuven.dsgt4.broker.domain.TravelPackage;
 
 @Service
 public class TransactionCoordinatorService {
@@ -27,17 +25,13 @@ public class TransactionCoordinatorService {
     @Autowired
     private PBFTService pbftService;
 
-    private final Gson gson = new Gson();
+    @Autowired
+    private BrokerService brokerService;
 
-    public ApiFuture<WriteResult> addTravelPackage(Map<String, Object> data) {
-        logger.info("Adding travel package");
-        Firestore db = firestore;
-
-        return db.runTransaction(transaction -> {
-            DocumentReference docRef = db.collection("travelPackages").document();
-            transaction.set(docRef, data);
-            return null;
-        });
+    public TravelPackage createTravelPackage(String userId) {
+        String packageId = generatePackageId();
+        TravelPackage travelPackage = new TravelPackage(userId, packageId);
+        return travelPackage;
     }
 
     public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
@@ -59,168 +53,197 @@ public class TransactionCoordinatorService {
                 throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
             }
 
+            // Prepare Phase
             for (Map<String, Object> flight : flights) {
                 String flightId = (String) flight.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "booked", true);
+                transaction.update(flightRef, "status", "prepared");
+            }
+
+            for (Map<String, Object> hotel : hotels) {
+                String hotelId = (String) hotel.get("hotelId");
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "status", "prepared");
+            }
+
+            // Commit Phase
+            for (Map<String, Object> flight : flights) {
+                String flightId = (String) flight.get("flightId");
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "status", "committed");
+                brokerService.publishMessage("flight-booking-requests", flight);
             }
 
             for (Map<String, Object> hotel : hotels) {
                 String hotelId = (String) hotel.get("hotelId");
                 DocumentReference hotelRef = db.collection("hotels").document(hotelId);
                 transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
+                transaction.update(hotelRef, "status", "committed");
+                brokerService.publishMessage("hotel-booking-requests", hotel);
             }
 
             String userId = (String) bookingDetails.get("userId");
-            DocumentReference userRef = db.collection("users").document(userId).collection("bookings").document(packageId);
+            DocumentReference userRef = db.collection("users").document(userId).collection("travelPackages").document(packageId);
             transaction.set(userRef, bookingDetails);
 
             return "Travel Package " + packageId + " booked successfully.";
         });
     }
 
-    public void processBookingResponse(String message) {
-        Map<String, Object> bookingResponse = parseMessage(message);
-        String transactionId = (String) bookingResponse.get("transactionId");
-        boolean success = (boolean) bookingResponse.get("success");
-        ApiFuture<DocumentSnapshot> future = firestore.collection("transactions").document(transactionId).get();
-        try {
-            DocumentSnapshot document = future.get();
-            if (document.exists()) {
-                BookingTransaction bookingTransaction = document.toObject(BookingTransaction.class);
-
-                if (success) {
-                    if (pbftService.initiateConsensus(transactionId)) {
-                        commitTransaction(bookingTransaction);
-                    } else {
-                        abortTransaction(bookingTransaction);
-                    }
-                } else {
-                    abortTransaction(bookingTransaction);
-                }
-            } else {
-                logger.error("Transaction not found for ID: " + transactionId);
-            }
-        } catch (InterruptedException | ExecutionException e) {
-            logger.error("Error processing booking response: ", e);
-        }
-    }
-
-    private Map<String, Object> parseMessage(String message) {
-        return gson.fromJson(message, Map.class);
-    }
-
-    private void commitTransaction(BookingTransaction bookingTransaction) {
-        Firestore db = firestore;
-        ApiFuture<Void> future = db.runTransaction(transaction -> {
-            for (String flightJson : bookingTransaction.getFlightIds()) {
-                Map<String, Object> flightMap = parseJson(flightJson);
-                String flightId = (String) flightMap.get("flightId");
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "status", "confirmed");
-            }
-
-            for (String hotelJson : bookingTransaction.getHotelIds()) {
-                Map<String, Object> hotelMap = parseJson(hotelJson);
-                String hotelId = (String) hotelMap.get("hotelId");
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "status", "confirmed");
-            }
-
-            DocumentReference userRef = db.collection("users").document(bookingTransaction.getUserId()).collection("bookings").document(bookingTransaction.getTransactionId());
-            transaction.update(userRef, "status", "confirmed");
-
-            return null;
-        });
-
-        ApiFutures.addCallback(future, new ApiFutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                logger.info("Transaction committed successfully");
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                logger.error("Transaction commit failed", t);
-            }
-        }, Runnable::run);
-    }
-
-    private void abortTransaction(BookingTransaction bookingTransaction) {
-        Firestore db = firestore;
-        ApiFuture<Void> future = db.runTransaction(transaction -> {
-            for (String flightJson : bookingTransaction.getFlightIds()) {
-                Map<String, Object> flightMap = parseJson(flightJson);
-                String flightId = (String) flightMap.get("flightId");
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "status", "available");
-            }
-
-            for (String hotelJson : bookingTransaction.getHotelIds()) {
-                Map<String, Object> hotelMap = parseJson(hotelJson);
-                String hotelId = (String) hotelMap.get("hotelId");
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "status", "available");
-            }
-
-            DocumentReference userRef = db.collection("users").document(bookingTransaction.getUserId()).collection("bookings").document(bookingTransaction.getTransactionId());
-            transaction.update(userRef, "status", "failed");
-
-            return null;
-        });
-
-        ApiFutures.addCallback(future, new ApiFutureCallback<Void>() {
-            @Override
-            public void onSuccess(Void result) {
-                logger.info("Transaction aborted successfully");
-            }
-
-            @Override
-            public void onFailure(Throwable t) {
-                logger.error("Transaction abort failed", t);
-            }
-        }, Runnable::run);
-    }
-
-    private Map<String, Object> parseJson(String json) {
-        return gson.fromJson(json, Map.class);
-    }
-
-    public ApiFuture<WriteResult> updateTravelPackage(String id, Map<String, Object> data) {
-        logger.info("Updating travel package with id: {}", id);
+    public ApiFuture<Void> cancelTravelPackage(String userId, String packageId) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
-            DocumentReference docRef = db.collection("travelPackages").document(id);
-            DocumentSnapshot docSnapshot = transaction.get(docRef).get();
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
 
-            if (!docSnapshot.exists()) {
-                throw new IllegalArgumentException("Travel Package with ID " + id + " not found");
+            if (!packageSnapshot.exists()) {
+                throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
             }
 
-            for (Map.Entry<String, Object> entry : data.entrySet()) {
-                transaction.update(docRef, entry.getKey(), entry.getValue());
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
+
+            // Prepare Phase for Cancellation
+            for (Map<String, Object> flight : flights) {
+                String flightId = (String) flight.get("flightId");
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "status", "prepared_cancel");
             }
 
-            transaction.update(docRef, data);
+            for (Map<String, Object> hotel : hotels) {
+                String hotelId = (String) hotel.get("hotelId");
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "status", "prepared_cancel");
+            }
+
+            // Commit Phase for Cancellation
+            for (Map<String, Object> flight : flights) {
+                String flightId = (String) flight.get("flightId");
+                DocumentReference flightRef = db.collection("flights").document(flightId);
+                transaction.update(flightRef, "status", "cancelled");
+                brokerService.publishMessage("flight-cancel-requests", flight);
+            }
+
+            for (Map<String, Object> hotel : hotels) {
+                String hotelId = (String) hotel.get("hotelId");
+                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                transaction.update(hotelRef, "bookedRooms", FieldValue.increment(-(Integer) hotel.get("roomsBooked")));
+                transaction.update(hotelRef, "status", "cancelled");
+                brokerService.publishMessage("hotel-cancel-requests", hotel);
+            }
+
             return null;
         });
     }
 
-    public ApiFuture<WriteResult> deleteTravelPackage(String id) {
-        logger.info("Deleting travel package with id: {}", id);
+    // Methods for Before Booking
+    public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
+            return null;
+        }).get();
+    }
 
-        return db.runTransaction(transaction -> {
-            DocumentReference docRef = db.collection("travelPackages").document(id);
-            DocumentSnapshot docSnapshot = transaction.get(docRef).get();
+    public void removeFlightFromPackage(String userId, String packageId, String flightId) throws ExecutionException, InterruptedException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
+            flights.removeIf(flight -> flight.get("flightId").equals(flightId));
+            transaction.update(packageRef, "flights", flights);
+            return null;
+        }).get();
+    }
 
-            if (!docSnapshot.exists()) {
-                throw new IllegalArgumentException("Travel Package with ID " + id + " not found");
-            }
+    public void addHotelToPackage(String userId, String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            transaction.update(packageRef, "hotels", FieldValue.arrayUnion(hotelDetails));
+            return null;
+        }).get();
+    }
 
-            transaction.delete(docRef);
+    public void removeHotelFromPackage(String userId, String packageId, String hotelId) throws ExecutionException, InterruptedException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
+            hotels.removeIf(hotel -> hotel.get("hotelId").equals(hotelId));
+            transaction.update(packageRef, "hotels", hotels);
+            return null;
+        }).get();
+    }
+
+    public void addCustomerToPackage(String userId, String packageId, Map<String, Object> customerDetails) throws ExecutionException, InterruptedException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            transaction.update(packageRef, "customers", FieldValue.arrayUnion(customerDetails));
+            return null;
+        }).get();
+    }
+
+    public void removeCustomerFromPackage(String userId, String packageId, String customerId) throws ExecutionException, InterruptedException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> customers = (List<Map<String, Object>>) packageSnapshot.get("customers");
+            customers.removeIf(customer -> customer.get("id").equals(customerId));
+            transaction.update(packageRef, "customers", customers);
+            return null;
+        }).get();
+    }
+
+    // Methods for After Booking
+    public void updateFlightInPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException, IOException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
+            flights.removeIf(flight -> flight.get("flightId").equals(flightDetails.get("flightId")));
+            flights.add(flightDetails);
+            transaction.update(packageRef, "flights", flights);
+            return null;
+        }).get();
+        brokerService.publishMessage("flight-update-requests", flightDetails);
+    }
+
+    public void updateHotelInPackage(String userId, String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException, IOException {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
+            hotels.removeIf(hotel -> hotel.get("hotelId").equals(hotelDetails.get("hotelId")));
+            hotels.add(hotelDetails);
+            transaction.update(packageRef, "hotels", hotels);
+            return null;
+        }).get();
+        brokerService.publishMessage("hotel-update-requests", hotelDetails);
+    }
+
+    public void updateCustomerInPackage(String userId, String packageId, Map<String, Object> customerDetails) {
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            List<Map<String, Object>> customers = (List<Map<String, Object>>) packageSnapshot.get("customers");
+            customers.removeIf(customer -> customer.get("id").equals(customerDetails.get("id")));
+            customers.add(customerDetails);
+            transaction.update(packageRef, "customers", customers);
             return null;
         });
+    }
+
+    private String generatePackageId() {
+        return "package-" + System.currentTimeMillis();
     }
 }
