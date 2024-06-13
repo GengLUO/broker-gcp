@@ -1,5 +1,6 @@
 package be.kuleuven.dsgt4.broker.controllers;
 
+import be.kuleuven.dsgt4.auth.WebSecurityConfig;
 import be.kuleuven.dsgt4.broker.domain.TravelPackage;
 import be.kuleuven.dsgt4.broker.services.BrokerService;
 import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
@@ -8,6 +9,7 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
@@ -64,6 +66,19 @@ public class BrokerRestController {
             testMessage.put("type", "test");
             testMessage.put("message", "Test message");
             String messageId = brokerService.publishMessage(topic, testMessage);
+            return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
+        }
+    }
+
+    //test function to test client can send message to broker
+    //then, broker can send to the pub/sub
+    @GetMapping("/emulator-publish/{project}/{topic}/{message}")
+    public ResponseEntity<?> emulatorPublish(@PathVariable String project, @PathVariable String topic, @PathVariable String message) {
+        try {
+            System.out.println("Inside emulatorPublish" + project + topic + message);
+            String messageId = brokerService.emulatorPublishMessage(project,topic,message);
             return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
