@@ -51,6 +51,7 @@ public class FirebaseInitializer {
 
             System.out.println("Firebase initialization complete.");
             setManagerRole("lOF97vEdM3Mxyma9w39MTyGSTZE2");
+            setManagerRole("Dig7K1wpAsP02YpPmvSRFn0meIt1");
 
         } catch (IOException e) {
             e.printStackTrace();
