@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.planeTicketRestService.domain;
+package be.kuleuven.dsgt4.flightRestService.domain;
 
 import java.util.Objects;
 

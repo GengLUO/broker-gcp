@@ -1,7 +1,5 @@
-package be.kuleuven.dsgt4.planeTicketRestService.controllers;
+package be.kuleuven.dsgt4.flightRestService.controllers;
 
-import be.kuleuven.dsgt4.planeTicketRestService.domain.Flight;
-import be.kuleuven.dsgt4.planeTicketRestService.domain.FlightRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -10,6 +8,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.google.gson.Gson;
+
+import be.kuleuven.dsgt4.flightRestService.domain.Flight;
+import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
 
 import java.util.HashMap;
 import java.util.List;
