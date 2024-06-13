@@ -42,6 +42,16 @@ public class UserRestController {
         return user;
     }
 
+    @GetMapping("/getAllOrders")
+    public String getAllOrders() {
+        System.out.println("Inside getAllOrders");
+        var user = WebSecurityConfig.getUser();
+        System.out.println(user.getRole());
+        if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+        System.out.println("It is a manager");
+        return "You are a manager, and there are the orders";
+    }
+
     @PostMapping("/{userId}")
     public ResponseEntity<?> createUser(@PathVariable String userId, @RequestBody Map<String, Object> userDetails) {
         try {
