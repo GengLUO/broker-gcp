@@ -16,22 +16,18 @@ public class TravelController {
     }
 
     @GetMapping("/profile")
-    public String showProfile(Model model) {
-
-        return "forward:/profile.html";
-    }
+    public String showProfile() { return "forward:/profile.html";}
 
     @GetMapping("/settings")
     public String showSettings() {
         return "forward:/settings.html";
     }
 
-
-
     @GetMapping("/mybookings")
     public String showBookings() {
         return "forward:/mybookings.html";
     }
+
     @GetMapping("/dashboard")
     public String showDashboard() {
         return "forward:/dashboard.html";
