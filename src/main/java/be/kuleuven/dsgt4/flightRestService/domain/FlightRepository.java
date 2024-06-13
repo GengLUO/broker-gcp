@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.planeTicketRestService.domain;
+package be.kuleuven.dsgt4.flightRestService.domain;
 
 import org.springframework.stereotype.Component;
 import org.springframework.util.Assert;

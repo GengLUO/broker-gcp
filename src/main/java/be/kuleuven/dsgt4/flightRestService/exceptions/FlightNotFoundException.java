@@ -1,4 +1,4 @@
-package be.kuleuven.dsgt4.planeTicketRestService.exceptions;
+package be.kuleuven.dsgt4.flightRestService.exceptions;
 
 
 import org.springframework.http.HttpStatus;
