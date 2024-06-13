@@ -85,25 +85,40 @@ public class FlightRestController {
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        String packageId = (String) message.get("packageId");
-        String userId = (String) message.get("userId");
+        String messageType = (String) message.get("type");
+        switch (messageType) {
+            case "flight-add-requests":
+                return handleFlightAddRequest(message);
+            case "flight-cancel-requests":
+                return handleFlightCancelRequest(message);
+            case "flight-update-requests":
+                return handleFlightUpdateRequest(message);
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
+        }
+    }
+
+    private ResponseEntity<String> handleFlightAddRequest(Map<String, Object> message) {
         Long flightId = Long.valueOf(message.get("flightId").toString());
         int seats = (int) message.get("seatsBooked");
-
         boolean success = flightRepository.bookFlight(flightId, seats);
 
-        // Respond with booking result
-        Map<String, Object> response = new HashMap<>();
-        response.put("packageId", packageId);
-        response.put("userId", userId);
-        response.put("flightId", flightId);
-        response.put("seatsBooked", seats);
-        response.put("success", success);
+        return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+    }
 
-        // Here you would normally publish the response message to a Pub/Sub topic
-        // For simplicity, we'll just print it
-        System.out.println("Flight booking response: " + response);
+    private ResponseEntity<String> handleFlightCancelRequest(Map<String, Object> message) {
+        Long flightId = Long.valueOf(message.get("flightId").toString());
+        int seats = (int) message.get("seatsBooked");
+        boolean success = flightRepository.cancelFlight(flightId, seats);
 
-        return ResponseEntity.ok("Message processed");
+        return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
+
+    private ResponseEntity<String> handleFlightUpdateRequest(Map<String, Object> message) {
+        Long flightId = Long.valueOf(message.get("flightId").toString());
+        int newSeats = (int) message.get("newSeatsBooked");
+        boolean success = flightRepository.updateFlightBooking(flightId, newSeats);
+
+        return success ? ResponseEntity.ok("Flight booking updated") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Update failed");
     }
 }
