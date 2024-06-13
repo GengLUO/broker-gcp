@@ -1,5 +1,6 @@
 package be.kuleuven.dsgt4.flightRestService.controllers;
 
+import org.springframework.context.event.EventListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -10,6 +11,7 @@ import org.springframework.web.bind.annotation.*;
 import com.google.gson.Gson;
 
 import be.kuleuven.dsgt4.flightRestService.domain.Flight;
+import be.kuleuven.dsgt4.flightRestService.domain.FlightEvent;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
 
 import java.util.HashMap;
@@ -83,6 +85,37 @@ public class FlightRestController {
         boolean success = flightRepository.cancelFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
     }
+
+    @EventListener
+    public ResponseEntity<String> handleFlightEvent(FlightEvent event) {
+        Map<String, Object> message = event.getMessageData();
+        String messageType = (String) message.get("type");
+        switch (messageType) {
+            case "flight-add-requests":
+                return handleFlightAddRequest(message);
+            case "flight-cancel-requests":
+                return handleFlightCancelRequest(message);
+            case "flight-update-requests":
+                return handleFlightUpdateRequest(message);
+            default:
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
+        }
+    }
+
+    // @PostMapping("/pubsub/push")
+    // public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
+    //     String messageType = (String) message.get("type");
+    //     switch (messageType) {
+    //         case "flight-add-requests":
+    //             return handleFlightAddRequest(message);
+    //         case "flight-cancel-requests":
+    //             return handleFlightCancelRequest(message);
+    //         case "flight-update-requests":
+    //             return handleFlightUpdateRequest(message);
+    //         default:
+    //             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
+    //     }
+    // }
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {

@@ -35,9 +35,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
-                // .antMatchers("/", "/index.html", "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg", "/api/hello", "/api/add", "/api/get/**", "/api/update/**", "/api/delete/**").permitAll() // Allow unauthenticated access for these endpoints
-                // .anyRequest().authenticated()
-                .antMatchers("/api/**/*").authenticated()
+                .antMatchers("/api/**").authenticated()
+                // .antMatchers("/api/**/*").authenticated()
                 .anyRequest().permitAll()
                 .and()
                 .addFilterBefore(this.securityFilter, UsernamePasswordAuthenticationFilter.class);

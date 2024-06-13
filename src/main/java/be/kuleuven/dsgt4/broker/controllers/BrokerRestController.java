@@ -17,7 +17,7 @@ import java.util.HashMap;
 import java.util.Map;
 
 @RestController
-@RequestMapping("/bookings")
+@RequestMapping("/api/bookings")
 public class BrokerRestController {
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.

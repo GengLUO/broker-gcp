@@ -34,12 +34,6 @@ public class UserRestController {
     public User whoami() throws InterruptedException, ExecutionException {
         var user = WebSecurityConfig.getUser();
         if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
-
-        UUID buuid = UUID.randomUUID();
-//        TODO: According to the code provided, we need to store the user message. Do we need to use it?
-//        UserMessage b = new UserMessage(buuid, LocalDateTime.now(), user.getRole(), user.getEmail());
-//        this.db.collection("usermessages").document(b.getId().toString()).set(b.toDoc()).get();
-
         return user;
     }
 
