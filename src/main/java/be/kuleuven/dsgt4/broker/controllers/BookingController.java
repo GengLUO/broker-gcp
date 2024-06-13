@@ -16,7 +16,7 @@ import java.util.HashMap;
 import java.util.concurrent.ExecutionException;
 
 @RestController
-@RequestMapping("/api/bookings")
+@RequestMapping("/bookings")
 public class BookingController {
 
     private final BrokerPublisherService publisherService;
