@@ -2,10 +2,10 @@ package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
@@ -45,6 +45,18 @@ public class BrokerService {
     public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
         String jsonMessage = gson.toJson(message);
         return publishMessage(topicId, jsonMessage);
+    }
+
+    public static void createPushSubscription(String projectId, String subscriptionId, String topicId, String pushEndpoint) throws IOException {
+        try (SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create()) {
+            TopicName topicName = TopicName.of(projectId, topicId);
+            SubscriptionName subscriptionName = SubscriptionName.of(projectId, subscriptionId);
+            PushConfig pushConfig = PushConfig.newBuilder()
+                                                .setPushEndpoint(pushEndpoint)
+                                                .build();
+            Subscription subscription = subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
+            System.out.println("Created push subscription: " + subscription.getName());
+        }
     }
 }
 
