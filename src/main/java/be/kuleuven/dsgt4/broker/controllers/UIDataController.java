@@ -33,6 +33,7 @@ public class UIDataController {
             return user.getId().toString();
         }
         throw new IllegalStateException("User not authenticated");
+//        return "jiaao"; //TODO: delete
     }
 
     @PostMapping("/createPackage")
@@ -45,6 +46,7 @@ public class UIDataController {
             EntityModel<Map<String, String>> entityModel = (EntityModel<Map<String, String>>) responseEntity.getBody();
             Map<String, String> content = entityModel.getContent();
             String packageId = content.get("packageId");
+            System.out.println("Created Package ID: " + packageId);  // Print out packageId
             return ResponseEntity.ok(Map.of("packageId", packageId));
         } else {
             return responseEntity;
@@ -57,6 +59,8 @@ public class UIDataController {
         String userId = getCurrentUserId();
         flightDetails.put("userId", userId);
         String packageId = (String) flightDetails.get("packageId");
+        System.out.println("Package ID passed to addFlightToTravelPackage method: " + packageId);  // Print out packageId
+        System.out.println("Flight details: " + flightDetails);
         return brokerRestController.addFlightToTravelPackage(userId, packageId, flightDetails);
     }
 
@@ -66,7 +70,10 @@ public class UIDataController {
         String userId = getCurrentUserId();
         hotelDetails.put("userId", userId);
         String packageId = (String) hotelDetails.get("packageId");
-        return brokerRestController.addHotelToTravelPackage(userId, packageId, hotelDetails);
+        System.out.println("Package ID passed to addHotelToTravelPackage method: " + packageId);  // Print out packageId
+        System.out.println("Hotel details: " + hotelDetails);
+        return null;
+//        return brokerRestController.addHotelToTravelPackage(userId, packageId, hotelDetails);
     }
 
     @PostMapping("/bookPackage")
@@ -74,7 +81,15 @@ public class UIDataController {
     public ResponseEntity<?> bookTravelPackage(@RequestBody Map<String, Object> bookingDetails) {
         String userId = getCurrentUserId();
         bookingDetails.put("userId", userId);
+
+        // 打印 bookingDetails 的所有内容
+        System.out.println("Booking Details passed to bookTravelPackage method:");
+        for (Map.Entry<String, Object> entry : bookingDetails.entrySet()) {
+            System.out.println(entry.getKey() + ": " + entry.getValue());
+        }
+
         String packageId = (String) bookingDetails.get("packageId");
         return brokerRestController.bookTravelPackage(userId, packageId, bookingDetails);
     }
+
 }

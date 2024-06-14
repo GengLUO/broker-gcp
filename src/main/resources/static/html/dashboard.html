@@ -23,8 +23,13 @@
     <div class="bg-white p-8 rounded-lg shadow-md">
         <h1 class="text-4xl font-bold mb-8 text-center">TravelTogether Booking</h1>
 
-        <!-- Hidden input field to store packageId -->
+        <!-- Hidden input field to store selected information -->
         <input type="hidden" id="packageId">
+        <input type="hidden" id="hotelId">
+        <input type="hidden" id="flightId">
+        <input type="hidden" id="roomsBooked">
+        <input type="hidden" id="seatsBooked">
+        <input type="hidden" id="customerName">
 
         <!-- Flight Booking Form -->
         <form id="flightBookingForm" class="mb-8">
@@ -60,7 +65,6 @@
                     </div>
                 </div>
             </div>
-            <button type="button" id="addFlightBooking" class="w-full bg-gray-500 text-white font-semibold py-2 px-4 rounded hover:bg-gray-600 mt-4">Add Another Flight</button>
         </form>
 
         <!-- Hotel Booking Form -->
@@ -97,7 +101,6 @@
                     </div>
                 </div>
             </div>
-            <button type="button" id="addHotelBooking" class="w-full bg-gray-500 text-white font-semibold py-2 px-4 rounded hover:bg-gray-600 mt-4">Add Another Hotel</button>
         </form>
 
         <!-- Confirm Booking Button -->
