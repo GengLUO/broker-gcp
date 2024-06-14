@@ -1,24 +1,47 @@
 import {
+  initializeApp
+} from "https://www.gstatic.com/firebasejs/9.9.4/firebase-app.js";
+import {
   getAuth,
   onAuthStateChanged,
+  signInWithCustomToken
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
 
+// Your web app's Firebase configuration for production
+const productionFirebaseConfig = {
+  apiKey: "AIzaSyBPMvUxzHlxbEHebXinwE4_eA4fTOVPYLs",
+  authDomain: "broker-da44b.firebaseapp.com",
+  projectId: "broker-da44b",
+  storageBucket: "broker-da44b.appspot.com",
+  messagingSenderId: "78512882731",
+  appId: "1:78512882731:web:7fd2c8c6aa99051296566e",
+  measurementId: "G-60LX98H1E5"
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    fetch('/travel/createPackage', {
+  const uid = sessionStorage.getItem('uid');
+
+  if (uid) {
+      console.log("User ID:", uid); // Successfully obtained user ID
+
+      fetch('/travel/createPackage', {
         method: 'POST',
         headers: {
-            'Content-Type': 'application/json'
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify({})
-    })
-    .then(response => response.json())
-    .then(data => {
+      })
+      .then(response => response.json())
+      .then(data => {
         document.getElementById('packageId').value = data.packageId;
-    })
-    .catch(error => console.error('Error:', error));
+      })
+      .catch(error => console.error('Error:', error));
+  } else {
+    window.location.href = 'index.html'; // Redirect to login page
+  }
 
-    addEventListeners(document.querySelector('.flight-booking'));
-    addEventListeners(document.querySelector('.hotel-booking'));
+  addEventListeners(document.querySelector('.flight-booking'));
+  addEventListeners(document.querySelector('.hotel-booking'));
 });
 
 function sendData(url, data) {
