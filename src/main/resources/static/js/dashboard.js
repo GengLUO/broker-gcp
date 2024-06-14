@@ -4,7 +4,6 @@ import {
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
 
 document.addEventListener('DOMContentLoaded', () => {
-    // Call createTravelPackage API when the page loads
     fetch('/travel/createPackage', {
         method: 'POST',
         headers: {
@@ -14,17 +13,14 @@ document.addEventListener('DOMContentLoaded', () => {
     })
     .then(response => response.json())
     .then(data => {
-        // Store the packageId in the hidden input field
         document.getElementById('packageId').value = data.packageId;
     })
     .catch(error => console.error('Error:', error));
 
-    // Add event listeners to the first booking forms
     addEventListeners(document.querySelector('.flight-booking'));
     addEventListeners(document.querySelector('.hotel-booking'));
 });
 
-// Function to send data to the backend
 function sendData(url, data) {
     return fetch(url, {
         method: 'POST',
@@ -33,38 +29,6 @@ function sendData(url, data) {
         },
         body: JSON.stringify(data)
     }).then(response => response.json());
-}
-
-// Function to add new flight booking form
-document.getElementById('addFlightBooking').addEventListener('click', () => {
-    const flightBookingTemplate = document.querySelector('.flight-booking').cloneNode(true);
-    clearInputs(flightBookingTemplate);
-    const uniqueId = Date.now();
-    updateUniqueIds(flightBookingTemplate, 'flight', uniqueId);
-    addEventListeners(flightBookingTemplate);
-    document.getElementById('flightBookings').appendChild(flightBookingTemplate);
-});
-
-// Function to add new hotel booking form
-document.getElementById('addHotelBooking').addEventListener('click', () => {
-    const hotelBookingTemplate = document.querySelector('.hotel-booking').cloneNode(true);
-    clearInputs(hotelBookingTemplate);
-    const uniqueId = Date.now();
-    updateUniqueIds(hotelBookingTemplate, 'hotel', uniqueId);
-    addEventListeners(hotelBookingTemplate);
-    document.getElementById('hotelBookings').appendChild(hotelBookingTemplate);
-});
-
-function clearInputs(section) {
-    section.querySelectorAll('input').forEach(input => input.value = '');
-    section.querySelectorAll('select').forEach(select => select.value = '');
-    section.querySelectorAll('.flightOptions, .hotelOptions, .passengerDetails').forEach(div => div.classList.add('hidden'));
-}
-
-function updateUniqueIds(section, type, uniqueId) {
-    section.querySelectorAll(`input[name^="${type}"]`).forEach(input => {
-        input.name = `${type}${uniqueId}`;
-    });
 }
 
 function addEventListeners(section) {
@@ -77,11 +41,6 @@ function addEventListeners(section) {
 }
 
 /*********************************************************************************************************/
-
-// Show flights when date and destination are selected
-document.querySelectorAll('.confirmFlightDetails').forEach(button => {
-    button.addEventListener('click', showFlights);
-});
 
 function showFlights(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
@@ -111,11 +70,6 @@ function showFlights(event) {
 
 /*********************************************************************************************************/
 
-// Show passenger details after flight selection
-document.querySelectorAll('.confirmFlightSelection').forEach(button => {
-    button.addEventListener('click', showPassengerDetails);
-});
-
 function showPassengerDetails(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
     const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked');
@@ -127,11 +81,6 @@ function showPassengerDetails(event) {
 }
 
 /*********************************************************************************************************/
-
-// Show passenger name fields based on number of passengers
-document.querySelectorAll('.numPassengers').forEach(input => {
-    input.addEventListener('input', showPassengerFields);
-});
 
 function showPassengerFields(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
@@ -151,35 +100,20 @@ function showPassengerFields(event) {
 
 /*********************************************************************************************************/
 
-// Confirm passengers and enable booking confirmation button
-document.querySelectorAll('.confirmPassengerNames').forEach(button => {
-    button.addEventListener('click', confirmFlightBooking);
-});
-
 function confirmFlightBooking(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
-    const packageId = document.getElementById('packageId').value;
     const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
     const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
+    const customerName = flightBookingSection.querySelector('.passengerNames input').value; // Assuming the first passenger's name is the customer's name
 
-    const flightDetails = {
-        packageId: packageId,
-        flightId: selectedFlight,
-        seatsBooked: numPassengers
-    };
+    document.getElementById('flightId').value = selectedFlight;
+    document.getElementById('seatsBooked').value = numPassengers;
+    document.getElementById('customerName').value = customerName;
 
-    sendData('/travel/addFlight', flightDetails).then(response => {
-        console.log(response);
-        document.getElementById('confirmBooking').classList.remove('hidden');
-    });
+    document.getElementById('confirmBooking').classList.remove('hidden');
 }
 
 /*********************************************************************************************************/
-
-// Show hotels when date and destination are selected
-document.querySelectorAll('.confirmHotelDetails').forEach(button => {
-    button.addEventListener('click', showHotels);
-});
 
 function showHotels(event) {
     const hotelBookingSection = event.target.closest('.hotel-booking');
@@ -209,88 +143,83 @@ function showHotels(event) {
 
 /*********************************************************************************************************/
 
-// Confirm hotel and enable booking confirmation button
-document.querySelectorAll('.confirmHotelSelection').forEach(button => {
-    button.addEventListener('click', confirmHotelBooking);
-});
-
 function confirmHotelBooking(event) {
     const hotelBookingSection = event.target.closest('.hotel-booking');
-    const packageId = document.getElementById('packageId').value;
     const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
     const numPeople = hotelBookingSection.querySelector('.numPeople').value;
 
-    const hotelDetails = {
-        packageId: packageId,
-        hotelId: selectedHotel,
-        roomsBooked: numPeople
-    };
+    document.getElementById('hotelId').value = selectedHotel;
+    document.getElementById('roomsBooked').value = numPeople;
 
-    sendData('/travel/addHotel', hotelDetails).then(response => {
-        console.log(response);
-        document.getElementById('confirmBooking').classList.remove('hidden');
-    });
+    document.getElementById('confirmBooking').classList.remove('hidden');
 }
 
 /*********************************************************************************************************/
 
-// Show booking summary on final confirmation
 document.getElementById('confirmBooking').addEventListener('click', showBookingSummary);
 
 function showBookingSummary() {
     const summaryContent = document.getElementById('summaryContent');
     summaryContent.innerHTML = '';
 
-    document.querySelectorAll('.flight-booking').forEach((flightBookingSection, index) => {
-        const destination = flightBookingSection.querySelector('.destination').value;
-        const date = flightBookingSection.querySelector('.date').value;
-        const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
-        const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
-        const passengerNames = [];
-        for (let i = 1; i <= numPassengers; i++) {
-            passengerNames.push(flightBookingSection.querySelector(`#passenger${i}`).value);
-        }
+    const flightBookingSection = document.querySelector('.flight-booking');
+    const destination = flightBookingSection.querySelector('.destination').value;
+    const date = flightBookingSection.querySelector('.date').value;
+    const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
+    const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
+    const passengerNames = [];
+    for (let i = 1; i <= numPassengers; i++) {
+        passengerNames.push(flightBookingSection.querySelector(`#passenger${i}`).value);
+    }
 
-        summaryContent.innerHTML += `
-            <h3 class="text-xl font-bold mb-2">Flight ${index + 1}</h3>
-            <p><strong>Destination:</strong> ${destination}</p>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Selected Flight:</strong> ${selectedFlight}</p>
-            <p><strong>Number of Passengers:</strong> ${numPassengers}</p>
-            <p><strong>Passenger Names:</strong> ${passengerNames.join(', ')}</p>
-        `;
-    });
+    summaryContent.innerHTML += `
+        <h3 class="text-xl font-bold mb-2">Flight</h3>
+        <p><strong>Destination:</strong> ${destination}</p>
+        <p><strong>Date:</strong> ${date}</p>
+        <p><strong>Selected Flight:</strong> ${selectedFlight}</p>
+        <p><strong>Number of Passengers:</strong> ${numPassengers}</p>
+        <p><strong>Passenger Names:</strong> ${passengerNames.join(', ')}</p>
+    `;
 
-    document.querySelectorAll('.hotel-booking').forEach((hotelBookingSection, index) => {
-        const destination = hotelBookingSection.querySelector('.hotelDestination').value;
-        const date = hotelBookingSection.querySelector('.hotelDate').value;
-        const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
-        const numPeople = hotelBookingSection.querySelector('.numPeople').value;
-        const numDays = hotelBookingSection.querySelector('.numDays').value;
+    const hotelBookingSection = document.querySelector('.hotel-booking');
+    const hotelDestination = hotelBookingSection.querySelector('.hotelDestination').value;
+    const hotelDate = hotelBookingSection.querySelector('.hotelDate').value;
+    const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
+    const numPeople = hotelBookingSection.querySelector('.numPeople').value;
+    const numDays = hotelBookingSection.querySelector('.numDays').value;
 
-        summaryContent.innerHTML += `
-            <h3 class="text-xl font-bold mb-2">Hotel ${index + 1}</h3>
-            <p><strong>Destination:</strong> ${destination}</p>
-            <p><strong>Date:</strong> ${date}</p>
-            <p><strong>Selected Hotel:</strong> ${selectedHotel}</p>
-            <p><strong>Number of People:</strong> ${numPeople}</p>
-            <p><strong>Number of Days:</strong> ${numDays}</p>
-        `;
-    });
+    summaryContent.innerHTML += `
+        <h3 class="text-xl font-bold mb-2">Hotel</h3>
+        <p><strong>Destination:</strong> ${hotelDestination}</p>
+        <p><strong>Date:</strong> ${hotelDate}</p>
+        <p><strong>Selected Hotel:</strong> ${selectedHotel}</p>
+        <p><strong>Number of People:</strong> ${numPeople}</p>
+        <p><strong>Number of Days:</strong> ${numDays}</p>
+    `;
 
     document.getElementById('bookingSummary').classList.remove('hidden');
+    document.getElementById('finalizeBooking').classList.remove('hidden');
 }
 
 /*********************************************************************************************************/
 
-// Finalize booking and reset form
 document.getElementById('finalizeBooking').addEventListener('click', () => {
     const packageId = document.getElementById('packageId').value;
+    const hotelId = document.getElementById('hotelId').value;
+    const roomsBooked = document.getElementById('roomsBooked').value;
+    const flightId = document.getElementById('flightId').value;
+    const seatsBooked = document.getElementById('seatsBooked').value;
+    const customerName = document.getElementById('customerName').value;
 
     const bookingDetails = {
-        packageId: packageId
-        // Populate with actual booking details
+        packageId: packageId,
+        hotelId: hotelId,
+        roomsBooked: roomsBooked,
+        flightId: flightId,
+        seatsBooked: seatsBooked,
+        customerName: customerName
     };
+
     sendData('/travel/bookPackage', bookingDetails).then(response => {
         console.log(response);
         alert('Booking confirmed!');
@@ -298,6 +227,7 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
         document.getElementById('hotelBookingForm').reset();
         document.getElementById('bookingSummary').classList.add('hidden');
         document.getElementById('confirmBooking').classList.add('hidden');
+        document.getElementById('finalizeBooking').classList.add('hidden');
         document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
         document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
     });
@@ -308,117 +238,3 @@ document.addEventListener('DOMContentLoaded', () => {
     addEventListeners(document.querySelector('.flight-booking'));
     addEventListeners(document.querySelector('.hotel-booking'));
 });
-
-
-/*********************************************************************************************************/
-
-//// Add these functions to handle AJAX requests
-//function sendRequest(url, data, method = 'POST') {
-//    return fetch(url, {
-//        method: method,
-//        headers: {
-//            'Content-Type': 'application/json'
-//        },
-//        body: JSON.stringify(data)
-//    }).then(response => response.json());
-//}
-//
-//// Modify showFlights and showHotels functions to send AJAX requests
-//function showFlights(event) {
-//    const flightBookingSection = event.target.closest('.flight-booking');
-//    const date = flightBookingSection.querySelector('.date').value;
-//    const destination = flightBookingSection.querySelector('.destination').value;
-//
-//    if (date && destination) {
-//        const requestData = {
-//            date: date,
-//            destination: destination
-//        };
-//
-//        sendRequest('/flights/search', requestData).then(response => {
-//            const flightOptions = flightBookingSection.querySelector('.flightOptions');
-//            const flightsList = flightBookingSection.querySelector('.flightsList');
-//            flightsList.innerHTML = '';
-//
-//            response.flights.forEach(flight => {
-//                flightsList.innerHTML += `
-//                    <div class="bg-gray-100 p-2 rounded-lg">
-//                        <input type="radio" id="flight${flight.id}" name="flight${Date.now()}" value="${flight.id}">
-//                        <label for="flight${flight.id}">${flight.name} - $${flight.price}</label>
-//                    </div>
-//                `;
-//            });
-//
-//            flightOptions.classList.remove('hidden');
-//        });
-//    }
-//}
-//
-//function showHotels(event) {
-//    const hotelBookingSection = event.target.closest('.hotel-booking');
-//    const date = hotelBookingSection.querySelector('.hotelDate').value;
-//    const destination = hotelBookingSection.querySelector('.hotelDestination').value;
-//
-//    if (date && destination) {
-//        const requestData = {
-//            date: date,
-//            destination: destination
-//        };
-//
-//        sendRequest('/hotels/search', requestData).then(response => {
-//            const hotelOptions = hotelBookingSection.querySelector('.hotelOptions');
-//            const hotelsList = hotelBookingSection.querySelector('.hotelsList');
-//            hotelsList.innerHTML = '';
-//
-//            response.hotels.forEach(hotel => {
-//                hotelsList.innerHTML += `
-//                    <div class="bg-gray-100 p-2 rounded-lg">
-//                        <input type="radio" id="hotel${hotel.id}" name="hotel${Date.now()}" value="${hotel.id}">
-//                        <label for="hotel${hotel.id}">${hotel.name} - $${hotel.price}/night</label>
-//                    </div>
-//                `;
-//            });
-//
-//            hotelOptions.classList.remove('hidden');
-//        });
-//    }
-//}
-//
-//// Modify confirmFlightBooking and confirmHotelBooking to include AJAX requests
-//function confirmFlightBooking(event) {
-//    const flightBookingSection = event.target.closest('.flight-booking');
-//    const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
-//    const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
-//    const passengerNames = [];
-//    for (let i = 1; i <= numPassengers; i++) {
-//        passengerNames.push(flightBookingSection.querySelector(`#passenger${i}`).value);
-//    }
-//
-//    const requestData = {
-//        flightId: selectedFlight,
-//        passengers: passengerNames
-//    };
-//
-//    sendRequest('/bookings/flights', requestData).then(response => {
-//        alert('Flight booked successfully!');
-//        document.getElementById('confirmBooking').classList.remove('hidden');
-//    });
-//}
-//
-//function confirmHotelBooking(event) {
-//    const hotelBookingSection = event.target.closest('.hotel-booking');
-//    const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
-//    const numPeople = hotelBookingSection.querySelector('.numPeople').value;
-//    const numDays = hotelBookingSection.querySelector('.numDays').value;
-//
-//    const requestData = {
-//        hotelId: selectedHotel,
-//        numPeople: numPeople,
-//        numDays: numDays
-//    };
-//
-//    sendRequest('/bookings/hotels', requestData).then(response => {
-//        alert('Hotel booked successfully!');
-//        document.getElementById('confirmBooking').classList.remove('hidden');
-//    });
-//}

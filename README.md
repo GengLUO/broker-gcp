@@ -92,8 +92,8 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
             "userId": "user123",
             "hotelId": [1,2,3],
             "flightId": [1,2,3],
-            "rooms": 2,
-            "seats": 2,
+            "rooms": 1,
+            "seats": 1
         }
         ```
 
@@ -109,16 +109,7 @@ Given the scenario where the travel agency interacts with suppliers (Hotel and F
             "flightId": 1,
             "roomsBooked": 2,
             "seatsBooked": 2,
-            "customers": [
-                {
-                    "name": "John Doe",
-                    "email": "john.doe@example.com"
-                },
-                {
-                    "name": "Jane Doe",
-                    "email": "jane.doe@example.com"
-                }
-            ]
+            "customerName": "john"
         }
         ```
 - **TransactionCoordinatorService -> 2PC**: `TransactionCoordinatorService` initiates a 2PC to ensure all involved services (Hotel and Flight) can commit to the booking.

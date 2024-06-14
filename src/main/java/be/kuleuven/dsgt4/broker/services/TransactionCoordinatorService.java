@@ -63,6 +63,26 @@ public class TransactionCoordinatorService {
             List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
             List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
 
+            // Print flights
+            if (flights != null) {
+                System.out.println("Flights:");
+                for (Map<String, Object> flight : flights) {
+                    System.out.println(flight);
+                }
+            } else {
+                System.out.println("flights is Null.");
+            }
+
+            // Print hotels
+            if (hotels != null) {
+                System.out.println("Hotels:");
+                for (Map<String, Object> hotel : hotels) {
+                    System.out.println(hotel);
+                }
+            } else {
+                System.out.println("hotels is Null.");
+            }
+
             if (!pbftService.initiateConsensus(packageId)) {
                 throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
             }
