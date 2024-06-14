@@ -15,6 +15,11 @@ public class TravelController {
         return "forward:/index.html";
     }
 
+    @GetMapping("/manager")
+    public String showLManager() {
+        return "forward:/manager.html";
+    }
+
     @GetMapping("/profile")
     public String showProfile() { return "forward:/profile.html";}
 
