@@ -44,7 +44,7 @@ wireUpAuthChange();
 function setupAuth() {
   let firebaseConfig;
   if (location.hostname === "localhost") {
-    firebaseConfig = localFirebaseConfig;
+    firebaseConfig = productionFirebaseConfig;
   } else {
     firebaseConfig = productionFirebaseConfig;
   }
@@ -54,7 +54,6 @@ function setupAuth() {
   const auth = getAuth(firebaseApp);
   // initialize Firebase app
   const firestore = getFirestore(firebaseApp);
-
   try {
     auth.signOut();
   } catch (err) { }
@@ -87,16 +86,16 @@ function wireGuiUpEvents() {
       console.log("Sign in button clicked");
       console.log("Email:", email.value);
       console.log("Password:", password.value);
-    signInWithEmailAndPassword(getAuth(), email.value, password.value)
+    signInWithEmailAndPassword(window.auth, email.value, password.value)
       .then(function (userCredential) {
         console.log("signed in");
         // Get the ID token
         userCredential.user.getIdToken().then((token) => {
           console.log("ID Token:", token);
           // You can use this token to make authenticated requests
-
+            fetchData(token);
           // Redirect to the dashboard page
-          window.location.href = 'dashboard.html';
+//          window.location.href = 'dashboard.html';
         });
       })
       .catch(function (error) {
@@ -110,14 +109,15 @@ function wireGuiUpEvents() {
   signUpButton.addEventListener("click", function () {
     // Sign up the user using Firebase's createUserWithEmailAndPassword method
 
-    createUserWithEmailAndPassword(getAuth(), email.value, password.value)
+    createUserWithEmailAndPassword(window.auth, email.value, password.value)
       .then(async function (userCredential) {
         console.log("created");
         // Add user profile to Firestore
         const user = userCredential.user;
-        await addDoc(collection(getFirestore(), "users"), {
-          email: user.email,
+        await addDoc(collection(window.firestore, "users"), {
           uid: user.uid,
+          email: user.email,
+          role: "user",
           createdAt: new Date()
         });
         console.log("User profile added to Firestore");
@@ -141,7 +141,7 @@ function wireGuiUpEvents() {
 
 function wireUpAuthChange() {
 
-  var auth = getAuth();
+  var auth = window.auth;
   onAuthStateChanged(auth, (user) => {
     console.log("onAuthStateChanged");
     if (user == null) {
@@ -165,15 +165,12 @@ function wireUpAuthChange() {
 
       //update GUI when user is authenticated
       showAuthenticated(auth.currentUser.email);
-
-      console.log("Token: " + idTokenResult.token);
-
       //fetch data from server when authentication was successful. 
       var token = idTokenResult.token;
       fetchData(token);
 
       // Redirect to the dashboard page
-      window.location.href = 'dashboard.html';
+      // window.location.href = 'dashboard.html';
     });
 
   });
@@ -183,6 +180,7 @@ function fetchData(token) {
   getHello(token);
   whoami(token);
 }
+
 function showAuthenticated(username) {
   // document.getElementById("namediv").innerHTML = "Hello " + username;
   // document.getElementById("logindiv").style.display = "none";
@@ -240,4 +238,31 @@ function whoami(token) {
     });
 
 }
+
+document.getElementById("getAllOrdersBtn").addEventListener("click", function () {
+    console.log("button clicked");
+  const auth = getAuth();
+  console.log("getauth");
+  auth.currentUser.getIdToken(true).then(function(token) {
+  console.log("inside");
+    console.log(token);
+    fetch('/api/getAllOrders', {
+      method: 'GET', // You might need to adjust this depending on your API requirements
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    })
+    .then(response => response.text())
+    .then(data => {
+      console.log(data);
+    })
+    .catch(error => {
+      console.error('Error:', error);
+      alert("Failed to fetch orders.");
+    });
+  }).catch(function(error) {
+    console.log('Error fetching token:', error);
+    alert("Authentication error. Please log in again.");
+  });
+});
 

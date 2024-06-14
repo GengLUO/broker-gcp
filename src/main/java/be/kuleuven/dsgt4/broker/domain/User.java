@@ -4,18 +4,18 @@ import java.util.UUID;
 
 public class User {
 
-    private UUID id;
+    private UUID uid;
     private String email;
     private String role;
 
     public User(String email, String role) {
-        this.id = UUID.randomUUID();
+        this.uid = UUID.randomUUID();
         this.email = email;
         this.role = role;
     }
 
     public UUID getId() {
-        return id;
+        return uid;
     }
 
     public String getEmail() {

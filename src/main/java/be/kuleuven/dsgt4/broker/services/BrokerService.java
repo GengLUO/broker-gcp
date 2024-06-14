@@ -1,11 +1,20 @@
 package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
+import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.core.NoCredentialsProvider;
+import com.google.api.gax.grpc.GrpcTransportChannel;
+import com.google.api.gax.rpc.FixedTransportChannelProvider;
+import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.pubsub.v1.Publisher;
+import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
+import com.google.cloud.pubsub.v1.TopicAdminClient;
+import com.google.cloud.pubsub.v1.TopicAdminSettings;
 import com.google.gson.Gson;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.PubsubMessage;
-import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.*;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
@@ -45,11 +54,61 @@ public class BrokerService {
         }
     }
 
+    //official example code: https://cloud.google.com/docs/authentication/provide-credentials-adc#local-dev
+    public String emulatorPublishMessage(String projectId, String topicId, String message){
+        String hostport = System.getenv("PUBSUB_EMULATOR_HOST");
+        hostport = "localhost:8100";
+        System.out.println("hostport:" + hostport);
+        ManagedChannel channel = ManagedChannelBuilder.forTarget(hostport).usePlaintext().build();
+        try {
+            TransportChannelProvider channelProvider =
+                    FixedTransportChannelProvider.create(GrpcTransportChannel.create(channel));
+            CredentialsProvider credentialsProvider = NoCredentialsProvider.create();
+            // Set the channel and credentials provider when creating a `TopicAdminClient`.
+            // Similarly for SubscriptionAdminClient
+            TopicAdminClient topicClient =
+                    TopicAdminClient.create(
+                            TopicAdminSettings.newBuilder()
+                                    .setTransportChannelProvider(channelProvider)
+                                    .setCredentialsProvider(credentialsProvider)
+                                    .build());
+            TopicName topicName = TopicName.of(projectId, topicId);
+            // Set the channel and credentials provider when creating a `Publisher`.
+            // Similarly for Subscriber
+            Publisher publisher =
+                    Publisher.newBuilder(topicName)
+                            .setChannelProvider(channelProvider)
+                            .setCredentialsProvider(credentialsProvider)
+                            .build();
+            ByteString data = ByteString.copyFromUtf8(message);
+            PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
+            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+            String messageId = messageIdFuture.get();
+            System.out.println("Emulator test: projectId " + projectId + " topicId " + topicId + "messageId " + messageId);
+            return messageId;
+        } catch (IOException | InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        } finally {
+            channel.shutdown();
+        }
+    }
+
     public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
         String jsonMessage = gson.toJson(message);
         return publishMessage(topicId, jsonMessage);
     }
 
+    public static void createPushSubscription(String projectId, String subscriptionId, String topicId, String pushEndpoint) throws IOException {
+        try (SubscriptionAdminClient subscriptionAdminClient = SubscriptionAdminClient.create()) {
+            TopicName topicName = TopicName.of(projectId, topicId);
+            SubscriptionName subscriptionName = SubscriptionName.of(projectId, subscriptionId);
+            PushConfig pushConfig = PushConfig.newBuilder()
+                                                .setPushEndpoint(pushEndpoint)
+                                                .build();
+            Subscription subscription = subscriptionAdminClient.createSubscription(subscriptionName, topicName, pushConfig, 10);
+            System.out.println("Created push subscription: " + subscription.getName());
+        }
+    }
 }
 
 
