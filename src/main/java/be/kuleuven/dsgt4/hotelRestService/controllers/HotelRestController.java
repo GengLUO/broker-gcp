@@ -86,7 +86,7 @@ public class HotelRestController {
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
         String messageType = (String) message.get("type");
         switch (messageType) {
-            case "hotel-add-requests":
+            case "hotel-booking-requests":
                 return handleHotelAddRequest(message);
             case "hotel-cancel-requests":
                 return handleHotelCancelRequest(message);

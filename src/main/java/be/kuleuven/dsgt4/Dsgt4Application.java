@@ -1,10 +1,7 @@
 package be.kuleuven.dsgt4;
 
-import com.google.auth.oauth2.GoogleCredentials;
 import com.google.cloud.firestore.Firestore;
 import com.google.cloud.firestore.FirestoreOptions;
-import com.google.firebase.FirebaseApp;
-import com.google.firebase.FirebaseOptions;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -45,30 +42,6 @@ public class Dsgt4Application {
             // return "demo-distributed-systems-kul"; // local project ID
 			return "broker-da44b"; // local project ID
         }
-    }
-    
-    @Bean
-    @Profile("prod")
-    public Firestore firestoreProd() throws IOException {
-        String projectId = projectId();
-        FileInputStream serviceAccount =
-                new FileInputStream("src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json");
-
-        FirebaseOptions options = new FirebaseOptions.Builder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .setProjectId(projectId)
-                .build();
-
-        if (FirebaseApp.getApps().isEmpty()) {
-            FirebaseApp.initializeApp(options);
-        }
-
-        FirestoreOptions firestoreOptions = FirestoreOptions.newBuilder()
-                .setCredentials(GoogleCredentials.fromStream(serviceAccount))
-                .setProjectId(projectId)
-                .build();
-
-        return firestoreOptions.getService();
     }
 
     @Bean

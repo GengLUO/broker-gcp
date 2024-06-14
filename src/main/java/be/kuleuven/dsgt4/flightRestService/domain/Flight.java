@@ -1,5 +1,7 @@
 package be.kuleuven.dsgt4.flightRestService.domain;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
+
 import java.util.Objects;
 
 
@@ -7,9 +9,13 @@ public class Flight {
 
     private static long idCounter = 0;
 
+    @JsonProperty("id")
     private Long id;
+    @JsonProperty("origin")
     private String origin;
+    @JsonProperty("destination")
     private String destination;
+    @JsonProperty("availableSeats")
     private int availableSeats;
 
     public Flight() {}

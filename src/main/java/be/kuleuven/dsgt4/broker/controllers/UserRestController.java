@@ -1,14 +1,20 @@
 package be.kuleuven.dsgt4.broker.controllers;
 
+import be.kuleuven.dsgt4.auth.WebSecurityConfig;
+import be.kuleuven.dsgt4.broker.domain.User;
 import be.kuleuven.dsgt4.broker.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AuthorizationServiceException;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ExecutionException;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/api")
 public class UserRestController {
 
     private final UserService userService;
@@ -16,6 +22,31 @@ public class UserRestController {
     @Autowired
     public UserRestController(UserService userService) {
         this.userService = userService;
+    }
+
+    @GetMapping("/hello")
+    public String hello() {
+        System.out.println("Inside hello");
+        return "hello world!";
+    }
+
+    @GetMapping("/whoami")
+    public User whoami() throws InterruptedException, ExecutionException {
+        var user = WebSecurityConfig.getUser();
+        if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+
+        UUID buuid = UUID.randomUUID();
+//        TODO: According to the code provided, we need to store the user message. Do we need to use it?
+//        UserMessage b = new UserMessage(buuid, LocalDateTime.now(), user.getRole(), user.getEmail());
+//        this.db.collection("usermessages").document(b.getId().toString()).set(b.toDoc()).get();
+
+        return user;
+    }
+
+    @GetMapping("/getAllOrders")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    public String getAllOrders() {
+        return "You are a manager, and there are the orders";
     }
 
     @PostMapping("/{userId}")
