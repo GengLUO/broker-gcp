@@ -40,6 +40,7 @@ public class UserRestController {
     @GetMapping("/getAllOrders")
     @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public String getAllOrders() {
+        //TODO: implement this (incorporate with firestore)
         return "You are a manager, and there are the orders";
     }
 

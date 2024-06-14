@@ -31,7 +31,21 @@ public class TransactionCoordinatorService {
     public TravelPackage createTravelPackage(String userId) {
         String packageId = generatePackageId();
         TravelPackage travelPackage = new TravelPackage(userId, packageId);
+        // Store the travel package in Firestore
+        storeTravelPackage(travelPackage);
         return travelPackage;
+    }
+    
+    private void storeTravelPackage(TravelPackage travelPackage) {
+        Firestore db = firestore;
+        DocumentReference packageRef = db.collection("travelPackages").document(travelPackage.getPackageId());
+        ApiFuture<WriteResult> result = packageRef.set(travelPackage);
+        try {
+            result.get();  // Ensure the write operation completes
+            logger.info("Stored travel package with packageId: {}", travelPackage.getPackageId());
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error storing travel package: {}", e.getMessage());
+        }
     }
 
     public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {

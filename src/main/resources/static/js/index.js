@@ -106,7 +106,7 @@ function wireGuiUpEvents() {
       .then((token) => {
         fetchData(token);
         // Optionally redirect to dashboard with authenticated state
-        window.location.href = 'dashboard.html';
+        window.location.href = 'html/dashboard.html'
       })
       .catch((error) => {
         console.error("Error during sign in:", error.message);
@@ -135,7 +135,7 @@ function wireGuiUpEvents() {
       .then((token) => {
         fetchData(token);
         // Optionally redirect to dashboard
-        window.location.href = 'dashboard.html';
+        window.location.href = 'html/dashboard.html'
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
