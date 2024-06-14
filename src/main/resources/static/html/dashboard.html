@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <title>Booking Page</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+</head>
+<body class="bg-gray-100 text-gray-900">
+<!-- Navigation Bar -->
+
+<nav class="bg-blue-600 p-4 text-white">
+    <div class="container mx-auto flex justify-between items-center">
+        <h1 class="text-2xl font-bold">TravelTogether</h1>
+        <div>
+            <a href="profile" class="px-4 hover:text-gray-200">Profile</a>
+            <a href="mybookings" class="px-4 hover:text-gray-200">My Bookings</a>
+            <a href="dashboard" class="px-4 hover:text-gray-200">Reserve</a>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="container mx-auto p-8">
+    <div class="bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-4xl font-bold mb-8 text-center">TravelTogether Booking</h1>
+
+        <!-- Hidden input field to store packageId -->
+        <input type="hidden" id="packageId">
+
+        <!-- Flight Booking Form -->
+        <form id="flightBookingForm" class="mb-8">
+            <h2 class="text-2xl font-bold mb-4">Flight Booking</h2>
+            <div id="flightBookings">
+                <div class="flight-booking">
+                    <div class="mb-4">
+                        <label for="destination" class="block text-sm font-semibold mb-1">Destination</label>
+                        <select class="destination border border-gray-300 rounded px-3 py-2 w-full">
+                            <option value="">Select Destination</option>
+                            <option value="New York">New York</option>
+                            <option value="London">London</option>
+                            <option value="Paris">Paris</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="date" class="block text-sm font-semibold mb-1">Date</label>
+                        <input type="date" class="date border border-gray-300 rounded px-3 py-2 w-full">
+                    </div>
+                    <button type="button" class="confirmFlightDetails w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600">Confirm Flight Details</button>
+                    <div class="flightOptions mt-4 hidden">
+                        <label class="block text-sm font-semibold mb-1">Available Flights</label>
+                        <div class="flightsList space-y-2"></div>
+                        <button type="button" class="confirmFlightSelection w-full bg-green-500 text-white font-semibold py-2 px-4 rounded hover:bg-green-600 mt-4">Confirm Flight Selection</button>
+                    </div>
+                    <div class="passengerDetails hidden mt-4">
+                        <div class="mb-4">
+                            <label for="numPassengers" class="block text-sm font-semibold mb-1">Number of Passengers</label>
+                            <input type="number" class="numPassengers border border-gray-300 rounded px-3 py-2 w-full" min="1" max="10">
+                        </div>
+                        <div class="passengerNames space-y-4"></div>
+                        <button type="button" class="confirmPassengerNames w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600">Confirm Passengers</button>
+                    </div>
+                </div>
+            </div>
+            <button type="button" id="addFlightBooking" class="w-full bg-gray-500 text-white font-semibold py-2 px-4 rounded hover:bg-gray-600 mt-4">Add Another Flight</button>
+        </form>
+
+        <!-- Hotel Booking Form -->
+        <form id="hotelBookingForm" class="mb-8">
+            <h2 class="text-2xl font-bold mb-4">Hotel Booking</h2>
+            <div id="hotelBookings">
+                <div class="hotel-booking">
+                    <div class="mb-4">
+                        <label for="hotelDestination" class="block text-sm font-semibold mb-1">Destination</label>
+                        <select class="hotelDestination border border-gray-300 rounded px-3 py-2 w-full">
+                            <option value="">Select Destination</option>
+                            <option value="New York">New York</option>
+                            <option value="London">London</option>
+                            <option value="Paris">Paris</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label for="hotelDate" class="block text-sm font-semibold mb-1">Date</label>
+                        <input type="date" class="hotelDate border border-gray-300 rounded px-3 py-2 w-full">
+                    </div>
+                    <button type="button" class="confirmHotelDetails w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600">Confirm Hotel Details</button>
+                    <div class="hotelOptions mt-4 hidden">
+                        <label class="block text-sm font-semibold mb-1">Available Hotels</label>
+                        <div class="hotelsList space-y-2"></div>
+                        <div class="mt-4">
+                            <label for="numPeople" class="block text-sm font-semibold mb-1">Number of People</label>
+                            <input type="number" class="numPeople border border-gray-300 rounded px-3 py-2 w-full" min="1" max="10">
+                        </div>
+                        <div class="mt-4">
+                            <label for="numDays" class="block text-sm font-semibold mb-1">Number of Days</label>
+                            <input type="number" class="numDays border border-gray-300 rounded px-3 py-2 w-full" min="1" max="30">
+                        </div>
+                        <button type="button" class="confirmHotelSelection w-full bg-green-500 text-white font-semibold py-2 px-4 rounded hover:bg-green-600 mt-4">Confirm Hotel Selection</button>
+                    </div>
+                </div>
+            </div>
+            <button type="button" id="addHotelBooking" class="w-full bg-gray-500 text-white font-semibold py-2 px-4 rounded hover:bg-gray-600 mt-4">Add Another Hotel</button>
+        </form>
+
+        <!-- Confirm Booking Button -->
+        <button id="confirmBooking" class="w-full bg-red-500 text-white font-semibold py-2 px-4 rounded hover:bg-red-600 hidden">Confirm Booking</button>
+        <div id="bookingSummary" class="hidden bg-gray-50 p-4 rounded mt-4">
+            <h2 class="text-2xl font-bold mb-4">Booking Summary</h2>
+            <div id="summaryContent"></div>
+            <button type="button" id="finalizeBooking" class="w-full bg-blue-500 text-white font-semibold py-2 px-4 rounded hover:bg-blue-600 mt-4">Finalize Booking</button>
+        </div>
+    </div>
+</div>
+
+<!-- Footer -->
+<footer class="bg-blue-600 text-white p-4 text-center">
+    <p>&copy; 2024 TravelTogether. All rights reserved.</p>
+</footer>
+
+<script type="module" src="../js/dashboard.js"></script>
+
+</body>
+</html>

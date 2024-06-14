@@ -1,6 +1,7 @@
 package be.kuleuven.dsgt4.flightRestService.controllers;
 
 import org.springframework.context.event.EventListener;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -14,9 +15,7 @@ import be.kuleuven.dsgt4.flightRestService.domain.Flight;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightEvent;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 import java.util.Optional;
 
@@ -121,7 +120,7 @@ public class FlightRestController {
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
         String messageType = (String) message.get("type");
         switch (messageType) {
-            case "flight-add-requests":
+            case "flight-booking-requests":
                 return handleFlightAddRequest(message);
             case "flight-cancel-requests":
                 return handleFlightCancelRequest(message);

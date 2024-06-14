@@ -4,7 +4,7 @@ import java.util.UUID;
 
 public class User {
 
-    private UUID uid; 
+    private UUID uid;
     private String email;
     private String role;
 
