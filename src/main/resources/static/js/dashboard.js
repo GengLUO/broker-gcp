@@ -1,4 +1,3 @@
-// dashboard.js
 import {
   getAuth,
   onAuthStateChanged,
