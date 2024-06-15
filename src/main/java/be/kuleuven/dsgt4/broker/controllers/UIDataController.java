@@ -26,21 +26,21 @@ public class UIDataController {
         this.brokerRestController = brokerRestController;
     }
 
-    private String getCurrentUserId() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication != null && authentication.getPrincipal() instanceof User) {
-            User user = (User) authentication.getPrincipal();
-            return user.getId().toString();
-        }
-        throw new IllegalStateException("User not authenticated");
-//        return "jiaao"; //TODO: delete
-    }
+//    private String getCurrentUserId() {
+//        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+//        if (authentication != null && authentication.getPrincipal() instanceof User) {
+//            User user = (User) authentication.getPrincipal();
+//            return user.getId().toString();
+//        }
+//        throw new IllegalStateException("User not authenticated");
+////        return "jiaao"; //TODO: delete
+//    }
 
     @PostMapping("/createPackage")
     @ResponseBody
     public ResponseEntity<?> createTravelPackage(@RequestBody Map<String, Object> packageDetails) {
-        String userId = getCurrentUserId();
-        ResponseEntity<?> responseEntity = brokerRestController.createTravelPackage(userId, packageDetails);
+//        String userId = getCurrentUserId();
+        ResponseEntity<?> responseEntity = brokerRestController.createTravelPackage("", packageDetails);
 
         if (responseEntity.getStatusCode() == HttpStatus.CREATED) {
             EntityModel<Map<String, String>> entityModel = (EntityModel<Map<String, String>>) responseEntity.getBody();
@@ -56,31 +56,24 @@ public class UIDataController {
     @PostMapping("/addFlight")
     @ResponseBody
     public ResponseEntity<?> addFlightToTravelPackage(@RequestBody Map<String, Object> flightDetails) {
-        String userId = getCurrentUserId();
-        flightDetails.put("userId", userId);
         String packageId = (String) flightDetails.get("packageId");
         System.out.println("Package ID passed to addFlightToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Flight details: " + flightDetails);
-        return brokerRestController.addFlightToTravelPackage(userId, packageId, flightDetails);
+        return brokerRestController.addFlightToTravelPackage("", packageId, flightDetails);
     }
 
     @PostMapping("/addHotel")
     @ResponseBody
     public ResponseEntity<?> addHotelToTravelPackage(@RequestBody Map<String, Object> hotelDetails) {
-        String userId = getCurrentUserId();
-        hotelDetails.put("userId", userId);
         String packageId = (String) hotelDetails.get("packageId");
         System.out.println("Package ID passed to addHotelToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Hotel details: " + hotelDetails);
-        return null;
-//        return brokerRestController.addHotelToTravelPackage(userId, packageId, hotelDetails);
+        return brokerRestController.addHotelToTravelPackage("", packageId, hotelDetails);
     }
 
     @PostMapping("/bookPackage")
     @ResponseBody
     public ResponseEntity<?> bookTravelPackage(@RequestBody Map<String, Object> bookingDetails) {
-        String userId = getCurrentUserId();
-        bookingDetails.put("userId", userId);
 
         // 打印 bookingDetails 的所有内容
         System.out.println("Booking Details passed to bookTravelPackage method:");
@@ -89,6 +82,7 @@ public class UIDataController {
         }
 
         String packageId = (String) bookingDetails.get("packageId");
+        String userId = (String) bookingDetails.get("userId");
         return brokerRestController.bookTravelPackage(userId, packageId, bookingDetails);
     }
 

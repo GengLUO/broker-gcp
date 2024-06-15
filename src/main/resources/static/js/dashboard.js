@@ -233,6 +233,7 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
     const flightId = document.getElementById('flightId').value;
     const seatsBooked = document.getElementById('seatsBooked').value;
     const customerName = document.getElementById('customerName').value;
+    const userId = sessionStorage.getItem('uid'); // 获取用户 ID
 
     const bookingDetails = {
         packageId: packageId,
@@ -240,7 +241,8 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
         roomsBooked: roomsBooked,
         flightId: flightId,
         seatsBooked: seatsBooked,
-        customerName: customerName
+        customerName: customerName,
+        userId: userId // 添加用户 ID 到 bookingDetails
     };
 
     sendData('/travel/bookPackage', bookingDetails).then(response => {
@@ -255,6 +257,7 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
         document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
     });
 });
+
 
 // Initial setup to add event listeners to the first booking forms
 document.addEventListener('DOMContentLoaded', () => {
