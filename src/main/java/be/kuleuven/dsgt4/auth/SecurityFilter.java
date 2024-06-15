@@ -38,6 +38,8 @@ public class SecurityFilter extends OncePerRequestFilter {
             try {
                 JwkProvider provider = new JwkConfiguration().jwkProvider();
                 DecodedJWT jwt = JWT.decode(token);
+                // prpint the token
+                System.out.println("Security Token: " + token);
                 Jwk jwk = provider.get(jwt.getKeyId());
 
                 Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);

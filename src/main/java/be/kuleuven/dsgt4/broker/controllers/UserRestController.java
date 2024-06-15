@@ -33,7 +33,9 @@ public class UserRestController {
     @GetMapping("/whoami")
     public User whoami() throws InterruptedException, ExecutionException {
         var user = WebSecurityConfig.getUser();
-        if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+        // if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+        if (!user.isManager()) System.out.println("You are not a manager.");;
+        // the user id of this user is different than the uid in firestore
         return user;
     }
 
