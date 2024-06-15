@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define variables
-PROJECT_ID="broker-da44b"
+PROJECT_ID="hotel-426314"
 HOTEL_TOPIC="hotel-responses"
 FLIGHT_TOPIC="flight-responses"
 HOTEL_PUSH_ENDPOINT="https://your-server-url/hotel/pubsub/push"

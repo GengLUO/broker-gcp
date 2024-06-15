@@ -26,6 +26,14 @@ public class HotelRestController {
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
     private final Gson gson = new Gson();
 
+    //Simple test function to test subscriber function
+    @PostMapping("/test")
+    public ResponseEntity<String> test(@RequestBody String body) {
+        System.out.println("Receieved test request");
+        System.out.println(body);
+        return ResponseEntity.ok("Received");
+    }
+
     @GetMapping("/all")
     public ResponseEntity<CollectionModel<EntityModel<Hotel>>> getHotels(@RequestParam String key) {
         if (!API_KEY.equals(key)) {
@@ -86,7 +94,7 @@ public class HotelRestController {
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
         String messageType = (String) message.get("type");
         switch (messageType) {
-            case "hotel-add-requests":
+            case "hotel-booking-requests":
                 return handleHotelAddRequest(message);
             case "hotel-cancel-requests":
                 return handleHotelCancelRequest(message);

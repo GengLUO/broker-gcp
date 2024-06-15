@@ -125,11 +125,6 @@
 			<version>0.22.1</version>
 		</dependency>
 
-		<dependency>
-			<groupId>com.google.firebase</groupId>
-			<artifactId>firebase-admin</artifactId>
-			<version>8.1.0</version>
-		</dependency>
 
 		<dependency>
 			<groupId>com.google.cloud</groupId>
@@ -185,7 +180,7 @@
 				<version>2.4.4</version>
 				<configuration>
 					<version>1</version>
-					<projectId>broker-da44b</projectId>
+					<projectId>hotel-426314</projectId>
 				</configuration>
 			</plugin>
 
