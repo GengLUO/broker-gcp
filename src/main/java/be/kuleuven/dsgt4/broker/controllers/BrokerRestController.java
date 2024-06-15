@@ -1,5 +1,6 @@
 package be.kuleuven.dsgt4.broker.controllers;
 
+import be.kuleuven.dsgt4.auth.WebSecurityConfig;
 import be.kuleuven.dsgt4.broker.domain.TravelPackage;
 import be.kuleuven.dsgt4.broker.services.BrokerService;
 import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
@@ -8,6 +9,7 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
@@ -15,9 +17,13 @@ import com.google.api.core.ApiFutureCallback;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ArrayBlockingQueue;
+import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.TimeUnit;
 
 @RestController
-@RequestMapping("/bookings")
+@RequestMapping("/api/bookings")
 public class BrokerRestController {
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.
@@ -70,6 +76,19 @@ public class BrokerRestController {
         }
     }
 
+    //test function to test client can send message to broker
+    //then, broker can send to the pub/sub
+    @GetMapping("/emulator-publish/{project}/{topic}/{message}")
+    public ResponseEntity<?> emulatorPublish(@PathVariable String project, @PathVariable String topic, @PathVariable String message) {
+        try {
+            System.out.println("Inside emulatorPublish" + project + topic + message);
+            String messageId = brokerService.emulatorPublishMessage(project,topic,message);
+            return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
+        }
+    }
+
     // Before Booking Methods
     @PostMapping("/{userId}/packages")
     public ResponseEntity<?> createTravelPackage(@PathVariable String userId, @RequestBody Map<String, Object> packageDetails) {
@@ -78,10 +97,20 @@ public class BrokerRestController {
             packageDetails.put("packageId", travelPackage.getPackageId());
             packageDetails.put("userId", userId);
 
-            String flightMessageId = brokerService.publishMessage("flight-booking-requests", packageDetails);
-            String hotelMessageId = brokerService.publishMessage("hotel-booking-requests", packageDetails);
+//            String flightMessageId = brokerService.publishMessage("flight-booking-requests", packageDetails);
+//            String hotelMessageId = brokerService.publishMessage("hotel-booking-requests", packageDetails);
 
-            EntityModel<String> resource = bookingToEntityModel(userId, travelPackage.getPackageId(), "Travel package created successfully.");
+//            EntityModel<String> resource = bookingToEntityModel(userId, travelPackage.getPackageId(), "Travel package created successfully.");
+
+            // Include packageId in the resource
+            EntityModel<Map<String, String>> resource = EntityModel.of(
+                    Map.of(
+                            "message", "Travel package created successfully.",
+                            "packageId", travelPackage.getPackageId()
+                    ),
+                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(userId, packageDetails)).withSelfRel()
+            );
+
             return ResponseEntity.status(HttpStatus.CREATED).body(resource);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to create travel package: " + e.getMessage());
@@ -259,6 +288,50 @@ public class BrokerRestController {
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateCustomerInTravelPackage(userId, packageId, new HashMap<>())).withRel("update-customer")
         );
     }
+
+    /*******************new methods******************/
+//    @GetMapping("/flights")
+//    public ResponseEntity<?> getFlights() {
+//        try {
+//            Map<String, Object> message = new HashMap<>();
+//            message.put("type", "flight-info-requests");
+//            message.put("action", "getAllFlights");
+//            String correlationId = UUID.randomUUID().toString();
+//            message.put("correlationId", correlationId);
+//
+//            // Publish request message
+//            brokerService.publishMessage("flight-info-requests", message);
+//
+//            // Wait for the response (using a blocking queue for simplicity)
+//            BlockingQueue<String> responseQueue = new ArrayBlockingQueue<>(1);
+//            brokerService.subscribeToResponse(correlationId, responseQueue);
+//
+//            // Get the response
+//            String flightsJson = responseQueue.poll(30, TimeUnit.SECONDS); // Wait for 30 seconds
+//
+//            if (flightsJson == null) {
+//                return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT).body("No response received for flight info request.");
+//            }
+//
+//            return ResponseEntity.ok(flightsJson);
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to get flights: " + e.getMessage());
+//        }
+//    }
+
+//    @GetMapping("/flights")
+//    public ResponseEntity<?> getFlights() {
+//        try {
+//            Map<String, Object> message = new HashMap<>();
+//            message.put("type", "flight-info-requests");
+//            message.put("action", "getAllFlights");
+//
+//            String messageId = brokerService.publishMessage("flight-info-requests", message);
+//            return ResponseEntity.ok("Request to get all flights has been published. Message ID: " + messageId);
+//        } catch (Exception e) {
+//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish message to get flights: " + e.getMessage());
+//        }
+//    }
 }
 
 /**

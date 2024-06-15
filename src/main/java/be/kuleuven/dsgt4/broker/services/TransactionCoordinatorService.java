@@ -31,8 +31,23 @@ public class TransactionCoordinatorService {
     public TravelPackage createTravelPackage(String userId) {
         String packageId = generatePackageId();
         TravelPackage travelPackage = new TravelPackage(userId, packageId);
+        // Store the travel package in Firestore
+        storeTravelPackage(travelPackage);
         return travelPackage;
     }
+
+    private void storeTravelPackage(TravelPackage travelPackage) {
+        Firestore db = firestore;
+        DocumentReference packageRef = db.collection("travelPackages").document(travelPackage.getPackageId());
+        ApiFuture<WriteResult> result = packageRef.set(travelPackage);
+        try {
+            result.get();  // Ensure the write operation completes
+            logger.info("Stored travel package with packageId: {}", travelPackage.getPackageId());
+        } catch (InterruptedException | ExecutionException e) {
+            logger.error("Error storing travel package: {}", e.getMessage());
+        }
+    }
+
 
     public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
         Firestore db = firestore;
@@ -48,6 +63,26 @@ public class TransactionCoordinatorService {
 
             List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
             List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
+
+            // Print flights
+            if (flights != null) {
+                System.out.println("Flights:");
+                for (Map<String, Object> flight : flights) {
+                    System.out.println(flight);
+                }
+            } else {
+                System.out.println("flights is Null.");
+            }
+
+            // Print hotels
+            if (hotels != null) {
+                System.out.println("Hotels:");
+                for (Map<String, Object> hotel : hotels) {
+                    System.out.println(hotel);
+                }
+            } else {
+                System.out.println("hotels is Null.");
+            }
 
             if (!pbftService.initiateConsensus(packageId)) {
                 throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);

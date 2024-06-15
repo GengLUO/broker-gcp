@@ -12,7 +12,7 @@ public class TravelController {
 
     @GetMapping("/")
     public String showLoginForm() {
-        return "forward:/index.html";
+        return "forward:/html/index.html";
     }
 
     @GetMapping("/manager")
@@ -21,21 +21,20 @@ public class TravelController {
     }
 
     @GetMapping("/profile")
-    public String showProfile() { return "forward:/profile.html";}
+    public String showProfile() { return "forward:/html/profile.html";}
 
     @GetMapping("/settings")
     public String showSettings() {
-        return "forward:/settings.html";
+        return "forward:/html/settings.html";
     }
 
     @GetMapping("/mybookings")
     public String showBookings() {
-        return "forward:/mybookings.html";
+        return "forward:/html/mybookings.html";
     }
 
     @GetMapping("/dashboard")
-    public String showDashboard() {
-        return "forward:/dashboard.html";
+    public void showDashboard() {
     }
 
 }

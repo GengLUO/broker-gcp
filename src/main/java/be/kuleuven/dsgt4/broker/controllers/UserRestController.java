@@ -33,19 +33,16 @@ public class UserRestController {
     @GetMapping("/whoami")
     public User whoami() throws InterruptedException, ExecutionException {
         var user = WebSecurityConfig.getUser();
-        if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
-
-        UUID buuid = UUID.randomUUID();
-//        TODO: According to the code provided, we need to store the user message. Do we need to use it?
-//        UserMessage b = new UserMessage(buuid, LocalDateTime.now(), user.getRole(), user.getEmail());
-//        this.db.collection("usermessages").document(b.getId().toString()).set(b.toDoc()).get();
-
+        // if (!user.isManager()) throw new AuthorizationServiceException("You are not a manager");
+        if (!user.isManager()) System.out.println("You are not a manager.");;
+        // the user id of this user is different than the uid in firestore
         return user;
     }
 
     @GetMapping("/getAllOrders")
     @PreAuthorize("hasAuthority('ROLE_MANAGER')")
     public String getAllOrders() {
+        //TODO: implement this (incorporate with firestore)
         return "You are a manager, and there are the orders";
     }
 

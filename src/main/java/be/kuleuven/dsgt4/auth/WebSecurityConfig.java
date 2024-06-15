@@ -23,6 +23,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     public static User getUser() {
+        System.out.println("security fitler user id: " + ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId());
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 
@@ -35,9 +36,8 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 .and()
                 .authorizeRequests()
-                // .antMatchers("/", "/index.html", "/**/*.css", "/**/*.js", "/**/*.png", "/**/*.jpg", "/api/hello", "/api/add", "/api/get/**", "/api/update/**", "/api/delete/**").permitAll() // Allow unauthenticated access for these endpoints
-                // .anyRequest().authenticated()
-                .antMatchers("/api/**/*").authenticated()
+                .antMatchers("/api/**").authenticated()
+                // .antMatchers("/api/**/*").authenticated()
                 .anyRequest().permitAll()
                 .and()
                 .addFilterBefore(this.securityFilter, UsernamePasswordAuthenticationFilter.class);
