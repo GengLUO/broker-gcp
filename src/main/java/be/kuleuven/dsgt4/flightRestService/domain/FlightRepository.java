@@ -96,6 +96,7 @@ public class FlightRepository {
         Flight flight = flights.get(id);
         if (flight != null && flight.getAvailableSeats() >= nrOfChangedSeat) {
             flight.setAvailableSeats(flight.getAvailableSeats() - nrOfChangedSeat);
+            System.out.println("Prepare flight!");
             return true;
         }
         return false;
@@ -107,10 +108,12 @@ public class FlightRepository {
     }
 
     //ROLLBACK
-    public synchronized void rollbackFlight(Long id, int nrOfChangedSeat) {
+    public synchronized boolean rollbackFlight(Long id, int nrOfChangedSeat) {
         Flight flight = flights.get(id);
         if (flight != null) {
             flight.setAvailableSeats(flight.getAvailableSeats() + nrOfChangedSeat);
+            return true;
         }
+        return false;
     }
 }
