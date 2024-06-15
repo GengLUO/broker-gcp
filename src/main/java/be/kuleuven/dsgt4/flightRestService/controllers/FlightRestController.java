@@ -14,6 +14,7 @@ import com.google.gson.Gson;
 import be.kuleuven.dsgt4.flightRestService.domain.Flight;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightEvent;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.util.*;
 import java.util.stream.Collectors;
@@ -28,6 +29,11 @@ public class FlightRestController {
 
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
     private final Gson gson = new Gson();
+
+    @Autowired
+    private WebClient.Builder webClientBuilder;
+
+    private WebClient webClient;
 
     @GetMapping("/all")
     public ResponseEntity<CollectionModel<EntityModel<Flight>>> getFlights(@RequestParam String key) {
@@ -124,19 +130,37 @@ public class FlightRestController {
                 return handleFlightAddRequest(message);
             case "flight-cancel-requests":
                 return handleFlightCancelRequest(message);
-            case "flight-update-requests":
+            case "flight-upd1ate-requests":
                 return handleFlightUpdateRequest(message);
             default:
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
         }
     }
 
+    //RESERVE
     private ResponseEntity<String> handleFlightAddRequest(Map<String, Object> message) {
         Long flightId = Long.valueOf(message.get("flightId").toString());
         int seats = (int) message.get("seatsBooked");
         boolean success = flightRepository.bookFlight(flightId, seats);
 
         return success ? ResponseEntity.ok("Flight booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+    }
+
+    // Commit a transaction
+    @PostMapping("/commit/{id}")
+    public ResponseEntity<?> commitFlight(@PathVariable Long id) {
+        boolean exists = flightRepository.commitFlight(id);
+        if (exists) {
+            return ResponseEntity.ok().build();
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    // Rollback a transaction
+    @PostMapping("/rollback/{id}/{seats}")
+    public ResponseEntity<?> rollbackFlight(@PathVariable Long id, @PathVariable int seats) {
+        flightRepository.rollbackFlight(id, seats);
+        return ResponseEntity.ok().build();
     }
 
     private ResponseEntity<String> handleFlightCancelRequest(Map<String, Object> message) {
@@ -154,4 +178,5 @@ public class FlightRestController {
 
         return success ? ResponseEntity.ok("Flight booking updated") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Update failed");
     }
+
 }
