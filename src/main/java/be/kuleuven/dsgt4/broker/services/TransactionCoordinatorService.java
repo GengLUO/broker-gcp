@@ -84,9 +84,9 @@ public class TransactionCoordinatorService {
                 System.out.println("hotels is Null.");
             }
 
-            if (!pbftService.initiateConsensus(packageId)) {
-                throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
-            }
+//            if (!pbftService.initiateConsensus(packageId)) {
+//                throw new IllegalStateException("PBFT consensus failed for package ID: " + packageId);
+//            }
 
             // Prepare Phase
             for (Map<String, Object> flight : flights) {
