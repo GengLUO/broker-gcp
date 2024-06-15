@@ -69,6 +69,7 @@ public class BrokerRestController {
             Map<String, Object> testMessage = new HashMap<>();
             testMessage.put("type", "test");
             testMessage.put("message", "Test message");
+            System.out.println("Finish creating test message");
             String messageId = brokerService.publishMessage(topic, testMessage);
             return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
         } catch (Exception e) {

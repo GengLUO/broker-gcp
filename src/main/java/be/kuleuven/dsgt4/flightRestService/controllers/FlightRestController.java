@@ -115,6 +115,15 @@ public class FlightRestController {
     //             return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
     //     }
     // }
+    @PostMapping("/pubsub/dummy-push")
+    public ResponseEntity<String> handleDummyPubSubPush(@RequestBody String message, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        System.out.println("Received message");
+        System.out.println(message);
+        return ResponseEntity.status(HttpStatus.OK).body("success");
+    }
 
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
