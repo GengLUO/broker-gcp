@@ -40,10 +40,10 @@ public class Dsgt4Application {
     @Bean
     public String projectId() {
         if (this.isProduction()) {
-            return "broker-da44b"; // production project ID
+            return "airplane-426314\n"; // production project ID
         } else {
             // return "demo-distributed-systems-kul"; // local project ID
-			return "broker-da44b"; // local project ID
+			return "airplane-426314\n"; // local project ID
         }
     }
     
