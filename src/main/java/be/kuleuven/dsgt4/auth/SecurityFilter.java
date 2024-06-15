@@ -9,6 +9,7 @@ import com.auth0.jwt.algorithms.Algorithm;
 import com.auth0.jwt.exceptions.JWTVerificationException;
 import com.auth0.jwt.interfaces.DecodedJWT;
 import com.auth0.jwt.interfaces.JWTVerifier;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -28,6 +29,9 @@ import java.util.*;
 @Component
 public class SecurityFilter extends OncePerRequestFilter {
 
+    @Autowired
+    private JwkProvider jwkProvider;
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
         String authorizationHeader = request.getHeader("Authorization");
@@ -37,8 +41,7 @@ public class SecurityFilter extends OncePerRequestFilter {
                 DecodedJWT jwt = JWT.decode(token);
 
                 if (jwt.getKeyId() != null){
-                    JwkProvider provider = new JwkConfiguration().jwkProvider();
-                    Jwk jwk = provider.get(jwt.getKeyId());
+                    Jwk jwk = jwkProvider.get(jwt.getKeyId());
                     Algorithm algorithm = Algorithm.RSA256((RSAPublicKey) jwk.getPublicKey(), null);
                     JWTVerifier verifier = JWT.require(algorithm)
                             .withIssuer("https://securetoken.google.com/broker-da44b")
