@@ -1,20 +1,20 @@
-import { 
-  initializeApp 
+import {
+  initializeApp
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-app.js";
-import { 
-  getAuth, 
-  connectAuthEmulator, 
-  onAuthStateChanged, 
-  createUserWithEmailAndPassword, 
-  signInWithEmailAndPassword, 
-  setPersistence, 
-  browserSessionPersistence 
+import {
+  getAuth,
+  connectAuthEmulator,
+  onAuthStateChanged,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+  setPersistence,
+  browserSessionPersistence
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
-import { 
-  getFirestore, 
-  collection, 
-  addDoc, 
-  connectFirestoreEmulator 
+import {
+  getFirestore,
+  collection,
+  addDoc,
+  connectFirestoreEmulator
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
 
 // Your web app's Firebase configuration for production
@@ -101,6 +101,7 @@ function wireGuiUpEvents() {
         return signInWithEmailAndPassword(window.auth, email.value, password.value);
       })
       .then((userCredential) => {
+        storeUserInfo(userCredential.user);  // Store user info
         return userCredential.user.getIdToken();
       })
       .then((token) => {
@@ -129,6 +130,8 @@ function wireGuiUpEvents() {
         });
         console.log("User profile added to Firestore");
 
+        storeUserInfo(user);  // Store user info
+
         // Fetch ID token and handle authenticated state
         return user.getIdToken();
       })
@@ -141,6 +144,15 @@ function wireGuiUpEvents() {
         console.error("Error during sign up:", error.message);
         alert(error.message);
       });
+  });
+}
+
+function storeUserInfo(user) {
+  user.getIdToken().then(token => {
+    sessionStorage.setItem('uid', user.uid);
+    sessionStorage.setItem('token', token);
+  }).catch(error => {
+    console.error("Error getting ID token:", error);
   });
 }
 

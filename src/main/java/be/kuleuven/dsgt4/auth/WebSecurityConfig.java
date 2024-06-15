@@ -23,6 +23,7 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
     }
 
     public static User getUser() {
+        System.out.println("security fitler user id: " + ((User) SecurityContextHolder.getContext().getAuthentication().getPrincipal()).getId());
         return (User) SecurityContextHolder.getContext().getAuthentication().getPrincipal();
     }
 

@@ -35,7 +35,7 @@ public class TransactionCoordinatorService {
         storeTravelPackage(travelPackage);
         return travelPackage;
     }
-    
+
     private void storeTravelPackage(TravelPackage travelPackage) {
         Firestore db = firestore;
         DocumentReference packageRef = db.collection("travelPackages").document(travelPackage.getPackageId());
@@ -47,6 +47,7 @@ public class TransactionCoordinatorService {
             logger.error("Error storing travel package: {}", e.getMessage());
         }
     }
+
 
     public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
         Firestore db = firestore;

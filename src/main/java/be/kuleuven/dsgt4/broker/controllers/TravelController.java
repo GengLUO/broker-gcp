@@ -29,8 +29,7 @@ public class TravelController {
     }
 
     @GetMapping("/dashboard")
-    public String showDashboard() {
-        return "forward:/html/dashboard.html";
+    public void showDashboard() {
     }
 
 }
