@@ -8,12 +8,13 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class FlightRepository {
 
     // Map: id -> flight
-    private static final Map<Long, Flight> flights = new HashMap<>();
+    private static final Map<Long, Flight> flights = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void initData() {
@@ -65,5 +66,51 @@ public class FlightRepository {
             return true;
         }
         return false;
+    }
+
+    // Create
+    public synchronized void addFlight(Flight flight) {
+        flights.put(flight.getId(), flight);
+    }
+
+    // Update
+    public synchronized boolean updateFlight(Long id, Flight updatedFlight) {
+        if (flights.containsKey(id)) {
+            flights.put(id, updatedFlight);
+            return true;
+        }
+        return false;
+    }
+
+    // Delete
+    public synchronized boolean deleteFlight(Long id) {
+        if (flights.containsKey(id)) {
+            flights.remove(id);
+            return true;
+        }
+        return false;
+    }
+
+    //PREPARE
+    public synchronized boolean prepareFlight(Long id, int nrOfChangedSeat) {
+        Flight flight = flights.get(id);
+        if (flight != null && flight.getAvailableSeats() >= nrOfChangedSeat) {
+            flight.setAvailableSeats(flight.getAvailableSeats() - nrOfChangedSeat);
+            return true;
+        }
+        return false;
+    }
+
+    //COMMIT
+    public synchronized boolean commitFlight(Long id) {
+        return flights.containsKey(id);
+    }
+
+    //ROLLBACK
+    public synchronized void rollbackFlight(Long id, int nrOfChangedSeat) {
+        Flight flight = flights.get(id);
+        if (flight != null) {
+            flight.setAvailableSeats(flight.getAvailableSeats() + nrOfChangedSeat);
+        }
     }
 }
