@@ -121,7 +121,7 @@ public class BrokerRestController {
     @PostMapping("/{userId}/packages/{packageId}/flights")
     public ResponseEntity<?> addFlightToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
-//            transactionCoordinatorService.addFlightToPackage(userId, packageId, flightDetails);
+            transactionCoordinatorService.addFlightToPackage(userId, packageId, flightDetails);
             return ResponseEntity.ok("Flight added to travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add flight to travel package: " + e.getMessage());
