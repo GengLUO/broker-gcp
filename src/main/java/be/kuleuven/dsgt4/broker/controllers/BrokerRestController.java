@@ -21,10 +21,6 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.TimeUnit;
-
-@RestController
-@RequestMapping("/api/bookings")
-public class BrokerRestController {
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.
      * Before Booking:
@@ -54,6 +50,10 @@ public class BrokerRestController {
      * - handleHotelPubSubPush: Handle a push message from the hotel supplier.
      * - handleFlightPubSubPush: Handle a push message from the flight supplier.
      */
+@RestController
+@RequestMapping("/api/bookings")
+public class BrokerRestController {
+
     private final BrokerService brokerService;
     private final TransactionCoordinatorService transactionCoordinatorService;
 
@@ -96,11 +96,6 @@ public class BrokerRestController {
             TravelPackage travelPackage = transactionCoordinatorService.createTravelPackage(userId);
             packageDetails.put("packageId", travelPackage.getPackageId());
             packageDetails.put("userId", userId);
-
-//            String flightMessageId = brokerService.publishMessage("flight-booking-requests", packageDetails);
-//            String hotelMessageId = brokerService.publishMessage("hotel-booking-requests", packageDetails);
-
-//            EntityModel<String> resource = bookingToEntityModel(userId, travelPackage.getPackageId(), "Travel package created successfully.");
 
             // Include packageId in the resource
             EntityModel<Map<String, String>> resource = EntityModel.of(
@@ -202,7 +197,6 @@ public class BrokerRestController {
     public ResponseEntity<?> updateFlightInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
             transactionCoordinatorService.updateFlightInPackage(userId, packageId, flightDetails);
-            brokerService.publishMessage("flight-update-requests", flightDetails);
             return ResponseEntity.ok("Flight updated in travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update flight in travel package: " + e.getMessage());
@@ -213,7 +207,6 @@ public class BrokerRestController {
     public ResponseEntity<?> updateHotelInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
         try {
             transactionCoordinatorService.updateHotelInPackage(userId, packageId, hotelDetails);
-            brokerService.publishMessage("hotel-update-requests", hotelDetails);
             return ResponseEntity.ok("Hotel updated in travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update hotel in travel package: " + e.getMessage());
