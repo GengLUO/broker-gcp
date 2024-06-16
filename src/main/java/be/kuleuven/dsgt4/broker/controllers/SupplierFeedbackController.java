@@ -21,13 +21,17 @@ public class SupplierFeedbackController {
     @PostMapping("/confirmHotel")
     @ResponseBody
     public ResponseEntity<?> confirmHotel(@RequestBody String packageId) {
-        return brokerRestController.confirmHotelBooking(packageId);
+        brokerRestController.confirmHotelBooking(packageId);
+        // set response status to 200 OK and message with Hotel booking confirming with packageId
+        return ResponseEntity.ok("From hotel supplier: hotel booking confirmed with packageId: " + packageId);
     }
 
     @PostMapping("/confirmFlight")
     @ResponseBody
     public ResponseEntity<?> confirmFlight(@RequestBody String packageId) {
-        return brokerRestController.confirmFlightBooking(packageId);
+        brokerRestController.confirmFlightBooking(packageId);
+        // set response status to 200 OK and message with Flight booking confirming with packageId
+        return ResponseEntity.ok("From flight supplier: flight booking confirmed with packageId: " + packageId);
 
     }
     
