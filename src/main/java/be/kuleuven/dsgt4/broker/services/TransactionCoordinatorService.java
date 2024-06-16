@@ -82,8 +82,8 @@ public class TransactionCoordinatorService {
             }
 
             // Prepare Phase
-            String flightMessageId = brokerService.publishMessage("flight-add-requests", bookingDetails);
-            if (flightMessageId == null) {
+            String prepareMessageId = brokerService.publishMessage("add-requests", bookingDetails);
+            if (prepareMessageId == null) {
                 logger.error("Failed to publish flight-add-requests message");
                 // reutrn null to indicate messgae publish failure (could not be retried)
                 return null;
@@ -92,12 +92,6 @@ public class TransactionCoordinatorService {
                 String flightId = (String) flight.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "status", "prepared");
-            }
-            String hotelMessageId = brokerService.publishMessage("hotel-add-requests", bookingDetails);
-            if (hotelMessageId == null) {
-                logger.error("Failed to publish hotel-add-requests message");
-                // reutrn null to indicate message failure (could not be retried)
-                return null;
             }
             for (Map<String, Object> hotel : hotels) {
                 String hotelId = (String) hotel.get("hotelId");
