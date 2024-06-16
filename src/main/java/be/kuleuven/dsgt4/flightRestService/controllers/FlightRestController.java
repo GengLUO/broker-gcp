@@ -61,43 +61,73 @@ public class FlightRestController {
         }
     }
 
-    //RESERVE
+    //pubsub
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> messageWrapper) {
         try {
             Map<String, Object> message = (Map<String, Object>) messageWrapper.get("message");
-            String base64EncodedData = (String) message.get("data");
-            String decodedData = new String(Base64.getDecoder().decode(base64EncodedData));
-            System.out.println("Decoded message data: " + decodedData);
+            Map<String, String> attributes = (Map<String, String>) message.get("attributes");
 
-            // Parse the decoded data
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> dataMap = mapper.readValue(decodedData, Map.class);
+            // Extract required fields from attributes
+            String packageId = attributes.get("packageId");
+            Long hotelId = Long.parseLong(attributes.get("hotelId"));
+            int roomsBooked = Integer.parseInt(attributes.get("roomsBooked"));
+            Long flightId = Long.parseLong(attributes.get("flightId"));
+            int seatsBooked = Integer.parseInt(attributes.get("seatsBooked"));
+            String userId = attributes.get("userId");
+            String customerName = attributes.get("customerName");
+            String action = attributes.get("action");
 
-            // Extract required fields
-            String packageId = (String) dataMap.get("packageId");
-            Long flightId = Long.parseLong((String) dataMap.get("flightId"));
-            int seats = Integer.parseInt((String) dataMap.get("seatsBooked"));
-            System.out.println("flightId = " + flightId + "seats = " + seats);
+            // Print all attributes
+            System.out.println("Received message attributes:");
+            System.out.println("packageId: " + packageId);
+            System.out.println("hotelId: " + hotelId);
+            System.out.println("roomsBooked: " + roomsBooked);
+            System.out.println("flightId: " + flightId);
+            System.out.println("seatsBooked: " + seatsBooked);
+            System.out.println("userId: " + userId);
+            System.out.println("customerName: " + customerName);
 
-            // Call flightRepository to prepare flight
-            boolean success = flightRepository.prepareFlight(flightId, seats);
-
-            if (success) {
-                System.out.println("Successfully booked flight for packageId: " + packageId);
-                transactionService.confirmAction(packageId, flightId);
-
-                return ResponseEntity.ok("Flight booked successfully");
-            } else {
-                System.out.println("Booking failed for packageId: " + packageId);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+            boolean success = false;
+            switch (action) {
+                //PREPARE
+                case "PREPARE":
+                    success = flightRepository.prepareFlight(flightId, seatsBooked);
+                    if (success) {
+                        System.out.println("Successfully booked flight for packageId: " + packageId);
+                        transactionService.confirmAction(packageId);
+                        return ResponseEntity.ok("Flight booked successfully");
+                    }
+                    break;
+                //COMMIT
+                case "COMMIT":
+                    success = flightRepository.commitFlight(flightId);
+                    if (success) {
+                        System.out.println("Successfully committed the flight for flightId: " + flightId);
+                        return ResponseEntity.ok("Flight committed successfully");
+                    }
+                    break;
+                //ROLLBACK
+                case "ROLLBACK":
+                    success = flightRepository.rollbackFlight(flightId, seatsBooked);
+                    if (success) {
+                        System.out.println("Successfully rolled back flight for packageId: " + packageId + ", flightId: " + flightId + ", seats: " + seatsBooked);
+                        return ResponseEntity.ok("Flight rolled back successfully");
+                    }
+                    break;
+                default:
+                    System.out.println("Unknown action: " + action);
+                    break;
             }
-        } catch (ClassCastException | IllegalArgumentException | NullPointerException |
-                 IOException e) {
-            // Handle exceptions gracefully
+
+            System.out.println("Booking failed for packageId: " + packageId + "action = " + action);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+
+        } catch (ClassCastException | IllegalArgumentException | NullPointerException e) {
             System.err.println("Error processing message: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing message");
         }
+
     }
 
     // Commit a transaction
