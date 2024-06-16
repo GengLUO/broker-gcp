@@ -12,11 +12,11 @@ public class TravelController {
 
     @GetMapping("/")
     public String showLoginForm() {
-        return "forward:/html/frontpage.html";
-//        return "forward:/html/index.html";
+    //  return "forward:/html/frontpage.html";
+       return "forward:/html/index.html";
     }
 
-    @GetMapping("/manager")
+    @GetMapping("/api/manager")
     public String showLManager() {
         return "forward:/html/manager.html";
     }
@@ -35,7 +35,8 @@ public class TravelController {
     }
 
     @GetMapping("/api/dashboard")
-    public void showDashboard() {
+    public String showDashboard() {
+        return "forward:/html/dashboard.html";
     }
 
 }

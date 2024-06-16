@@ -18,13 +18,13 @@ public class SupplierFeedbackController {
     public SupplierFeedbackController(BrokerRestController brokerRestController) {
         this.brokerRestController = brokerRestController;
     }
-    @PostMapping("/confirmHotel")
+    @PostMapping("/api/confirmHotel")
     @ResponseBody
     public ResponseEntity<?> confirmHotel(@RequestBody String packageId) {
         return brokerRestController.confirmHotelBooking(packageId);
     }
 
-    @PostMapping("/confirmFlight")
+    @PostMapping("/api/confirmFlight")
     @ResponseBody
     public ResponseEntity<?> confirmFlight(@RequestBody String packageId) {
         return brokerRestController.confirmFlightBooking(packageId);

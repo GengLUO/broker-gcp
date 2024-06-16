@@ -7,26 +7,22 @@ import {
   } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
   import { connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
 
+  const uid = sessionStorage.getItem('uid');
+  const token = sessionStorage.getItem('token');
+
   function setupDashboard() {
     const auth = window.auth;
     const firestore = window.firestore;
-
+    // if the current host is localhost, connect to the Firestore emulator
     if (location.hostname === "localhost") {
-      connectFirestoreEmulator(firestore, 'localhost', 8084);
+      connectFirestoreEmulator(firestore, "localhost", 8084);
     }
-
+    // if the current authentication is not authenticated, redirect to the login page
     setPersistence(auth, browserSessionPersistence)
       .then(() => {
         onAuthStateChanged(auth, (user) => {
-          if (user) {
-            user.getIdToken().then((token) => {
-              fetchData(token, user.uid); // Pass the user ID to fetchData
-            }).catch((error) => {
-              console.error("Error getting ID token:", error);
-            });
-          } else {
-            // Return to the login page if the user is not logged in
-            window.location.href = 'html/index.html';
+          if (!user) {
+            window.location.href = "html/index.html";
           }
         });
       })
@@ -56,6 +52,7 @@ import {
     fetch('/api/travel/createPackage', {
         method: 'POST',
         headers: {
+          Authorization: 'Bearer ' + token, 
           'Content-Type': 'application/json'
         },
         body: JSON.stringify(packageDetails)
@@ -74,6 +71,7 @@ import {
     const response = await fetch(url, {
         method: 'POST',
         headers: {
+            Authorization: 'Bearer ' + token, 
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(data)
@@ -180,6 +178,7 @@ import {
     const response = await fetch('/api/travel/addFlight', {
         method: 'POST',
         headers: {
+            Authorization: 'Bearer ' + token, 
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(flightDetails)
@@ -246,6 +245,7 @@ async function confirmHotelBooking(event) {
     const response = await fetch('/api/travel/addHotel', {
         method: 'POST',
         headers: {
+            Authorization: 'Bearer ' + token, 
             'Content-Type': 'application/json'
         },
         body: JSON.stringify(hotelDetails)

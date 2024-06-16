@@ -114,9 +114,9 @@ public class BrokerRestController {
     }
 
     @PostMapping("/packages/{packageId}/flights")
-    public ResponseEntity<?> addFlightToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
+    public ResponseEntity<?> addFlightToTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
-            transactionCoordinatorService.addFlightToPackage(userId, packageId, flightDetails);
+            transactionCoordinatorService.addFlightToPackage(packageId, flightDetails);
             return ResponseEntity.ok("Flight added to travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add flight to travel package: " + e.getMessage());
@@ -124,9 +124,9 @@ public class BrokerRestController {
     }
 
     @DeleteMapping("/packages/{packageId}/flights/{flightId}")
-    public ResponseEntity<?> removeFlightFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String flightId) {
+    public ResponseEntity<?> removeFlightFromTravelPackage(@PathVariable String packageId, @PathVariable String flightId) {
         try {
-            transactionCoordinatorService.removeFlightFromPackage(userId, packageId, flightId);
+            transactionCoordinatorService.removeFlightFromPackage(packageId, flightId);
             return ResponseEntity.ok("Flight removed from travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to remove flight from travel package: " + e.getMessage());
@@ -134,9 +134,9 @@ public class BrokerRestController {
     }
 
     @PostMapping("/packages/{packageId}/hotels")
-    public ResponseEntity<?> addHotelToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
+    public ResponseEntity<?> addHotelToTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
         try {
-            transactionCoordinatorService.addHotelToPackage(userId, packageId, hotelDetails);
+            transactionCoordinatorService.addHotelToPackage(packageId, hotelDetails);
             return ResponseEntity.ok("Hotel added to travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add hotel to travel package: " + e.getMessage());
@@ -144,9 +144,9 @@ public class BrokerRestController {
     }
 
     @DeleteMapping("/packages/{packageId}/hotels/{hotelId}")
-    public ResponseEntity<?> removeHotelFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String hotelId) {
+    public ResponseEntity<?> removeHotelFromTravelPackage(@PathVariable String packageId, @PathVariable String hotelId) {
         try {
-            transactionCoordinatorService.removeHotelFromPackage(userId, packageId, hotelId);
+            transactionCoordinatorService.removeHotelFromPackage(packageId, hotelId);
             return ResponseEntity.ok("Hotel removed from travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to remove hotel from travel package: " + e.getMessage());
@@ -154,9 +154,9 @@ public class BrokerRestController {
     }
 
     @PostMapping("/packages/{packageId}/customers")
-    public ResponseEntity<?> addCustomerToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
+    public ResponseEntity<?> addCustomerToTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
         try {
-            transactionCoordinatorService.addCustomerToPackage(userId, packageId, customerDetails);
+            transactionCoordinatorService.addCustomerToPackage(packageId, customerDetails);
             return ResponseEntity.ok("Customer added to travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to add customer to travel package: " + e.getMessage());
@@ -164,9 +164,9 @@ public class BrokerRestController {
     }
 
     @DeleteMapping("/packages/{packageId}/customers/{customerId}")
-    public ResponseEntity<?> removeCustomerFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String customerId) {
+    public ResponseEntity<?> removeCustomerFromTravelPackage(@PathVariable String packageId, @PathVariable String customerId) {
         try {
-            transactionCoordinatorService.removeCustomerFromPackage(userId, packageId, customerId);
+            transactionCoordinatorService.removeCustomerFromPackage(packageId, customerId);
             return ResponseEntity.ok("Customer removed from travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to remove customer from travel package: " + e.getMessage());
@@ -175,7 +175,7 @@ public class BrokerRestController {
 
     // Booking Methods: 2PC transaction preparation
     @PostMapping("/packages/{packageId}/book")
-    public ResponseEntity<?> bookTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
+    public ResponseEntity<?> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
         ApiFuture<String> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
         ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
             @Override
@@ -185,12 +185,12 @@ public class BrokerRestController {
 
             @Override
             public void onSuccess(String messageId) {
-                EntityModel<String> resource = bookingToEntityModel(userId, packageId, bookingDetails.toString());
+                EntityModel<String> resource = bookingToEntityModel(packageId, bookingDetails.toString());
                 ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
-                        .bookTravelPackage(userId, packageId, bookingDetails)).toUri()).body(resource);
+                        .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
             }
         }, Runnable::run);
-        return ResponseEntity.ok("Booking process initiated for user ID: " + userId + " and package ID: " + packageId);
+        return ResponseEntity.ok("Booking process initiated package ID: " + packageId);
     }
 
     // Booking Methods: 2PC transaction execution (check the confirmation of flight and hotel booking)
@@ -258,8 +258,8 @@ public class BrokerRestController {
 
     // Booking Methods: 2PC transaction execution (abort)
     @DeleteMapping("/packages/{packageId}/cancel")
-    public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
-        ApiFuture<String> result = transactionCoordinatorService.cancelTravelPackage(userId, packageId);
+    public ResponseEntity<?> cancelTravelPackage(@PathVariable String packageId) {
+        ApiFuture<String> result = transactionCoordinatorService.cancelTravelPackage(packageId);
         ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
             @Override
             public void onFailure(Throwable t) {
@@ -268,7 +268,7 @@ public class BrokerRestController {
 
             @Override
             public void onSuccess(String messageId) {
-                ResponseEntity.ok("Travel package cancelled for user ID: " + userId + " and package ID: " + packageId);
+                ResponseEntity.ok("Travel package cancelled for package ID: " + packageId);
             }
         }, Runnable::run);
         return null;
@@ -276,9 +276,9 @@ public class BrokerRestController {
 
     // After Booking Methods
     @PutMapping("/packages/{packageId}/flights")
-    public ResponseEntity<?> updateFlightInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
+    public ResponseEntity<?> updateFlightInTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
-            transactionCoordinatorService.updateFlightInPackage(userId, packageId, flightDetails);
+            transactionCoordinatorService.updateFlightInPackage(packageId, flightDetails);
             return ResponseEntity.ok("Flight updated in travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update flight in travel package: " + e.getMessage());
@@ -286,9 +286,9 @@ public class BrokerRestController {
     }
 
     @PutMapping("/packages/{packageId}/hotels")
-    public ResponseEntity<?> updateHotelInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
+    public ResponseEntity<?> updateHotelInTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
         try {
-            transactionCoordinatorService.updateHotelInPackage(userId, packageId, hotelDetails);
+            transactionCoordinatorService.updateHotelInPackage(packageId, hotelDetails);
             return ResponseEntity.ok("Hotel updated in travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update hotel in travel package: " + e.getMessage());
@@ -296,29 +296,29 @@ public class BrokerRestController {
     }
 
     @PutMapping("/packages/{packageId}/customers")
-    public ResponseEntity<?> updateCustomerInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
+    public ResponseEntity<?> updateCustomerInTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
         try {
-            transactionCoordinatorService.updateCustomerInPackage(userId, packageId, customerDetails);
+            transactionCoordinatorService.updateCustomerInPackage(packageId, customerDetails);
             return ResponseEntity.ok("Customer updated in travel package.");
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update customer in travel package: " + e.getMessage());
         }
     }
 
-    private EntityModel<String> bookingToEntityModel(String userId, String packageId, String message) {
+    private EntityModel<String> bookingToEntityModel(String packageId, String message) {
         return EntityModel.of(message,
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).bookTravelPackage(userId, packageId, new HashMap<>())).withSelfRel(),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).bookTravelPackage(packageId, new HashMap<>())).withSelfRel(),
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(new HashMap<>())).withRel("create-package"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).cancelTravelPackage(userId, packageId)).withRel("cancel-package"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addFlightToTravelPackage(userId, packageId, new HashMap<>())).withRel("add-flight"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeFlightFromTravelPackage(userId, packageId, "")).withRel("remove-flight"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addHotelToTravelPackage(userId, packageId, new HashMap<>())).withRel("add-hotel"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeHotelFromTravelPackage(userId, packageId, "")).withRel("remove-hotel"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addCustomerToTravelPackage(userId, packageId, new HashMap<>())).withRel("add-customer"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeCustomerFromTravelPackage(userId, packageId, "")).withRel("remove-customer"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateFlightInTravelPackage(userId, packageId, new HashMap<>())).withRel("update-flight"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateHotelInTravelPackage(userId, packageId, new HashMap<>())).withRel("update-hotel"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateCustomerInTravelPackage(userId, packageId, new HashMap<>())).withRel("update-customer")
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).cancelTravelPackage(packageId)).withRel("cancel-package"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addFlightToTravelPackage(packageId, new HashMap<>())).withRel("add-flight"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeFlightFromTravelPackage(packageId, "")).withRel("remove-flight"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addHotelToTravelPackage(packageId, new HashMap<>())).withRel("add-hotel"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeHotelFromTravelPackage(packageId, "")).withRel("remove-hotel"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addCustomerToTravelPackage(packageId, new HashMap<>())).withRel("add-customer"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeCustomerFromTravelPackage(packageId, "")).withRel("remove-customer"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateFlightInTravelPackage(packageId, new HashMap<>())).withRel("update-flight"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateHotelInTravelPackage(packageId, new HashMap<>())).withRel("update-hotel"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateCustomerInTravelPackage(packageId, new HashMap<>())).withRel("update-customer")
         );
     }
 }
