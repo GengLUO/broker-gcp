@@ -104,7 +104,12 @@ public class HotelRestController {
                 return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
         }
     }
-
+    @PostMapping("/pubsub/dummy-push")
+    public ResponseEntity<String> handleDummyPubSubPush(@RequestBody String message) {
+        System.out.println("Received message");
+        System.out.println(message);
+        return ResponseEntity.status(HttpStatus.OK).body("success");
+    }
     private ResponseEntity<String> handleHotelAddRequest(Map<String, Object> message) {
         Long hotelId = Long.valueOf(message.get("hotelId").toString());
         int rooms = (int) message.get("roomsBooked");
