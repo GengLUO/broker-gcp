@@ -34,8 +34,8 @@ public class TransactionCoordinatorService {
     }
 
     private void storeTravelPackage(TravelPackage travelPackage) {
-//        Firestore db = firestore;
-        DocumentReference packageRef = firestore.collection("travelPackages").document(travelPackage.getPackageId());
+        Firestore db = firestore;
+        DocumentReference packageRef = db.collection("travelPackages").document(travelPackage.getPackageId());
         ApiFuture<WriteResult> result = packageRef.set(travelPackage);
         try {
             result.get();  // Ensure the write operation completes
@@ -190,9 +190,9 @@ public class TransactionCoordinatorService {
 
     // Methods for Before Booking
     public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
-//        Firestore db = firestore;
-        firestore.runTransaction(transaction -> {
-           DocumentReference packageRef = firestore.collection("travelPackages").document(packageId);
+        Firestore db = firestore;
+        db.runTransaction(transaction -> {
+           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
            transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
                return null;
         }).get();
