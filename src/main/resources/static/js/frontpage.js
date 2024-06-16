@@ -90,6 +90,17 @@ function wireGuiUpEvents() {
 
   signInButton.addEventListener("click", () => {
     setPersistence(window.auth, browserSessionPersistence)
+      .then(() => {
+        return signInWithEmailAndPassword(window.auth, email.value, password.value);
+      })
+      .then((userCredential) => {
+        storeUserInfo(userCredential.user);
+        return userCredential.user.getIdToken();
+      })
+      .catch((error) => {
+        console.error("Error during sign in:", error.message);
+        alert(error.message);
+      });
         .then(() => {
           return signInWithEmailAndPassword(window.auth, email.value, password.value);
         })
@@ -106,8 +117,6 @@ function wireGuiUpEvents() {
               .then(user => {
                 if (user.role === 'manager') {
                   showManagerDashboard();
-                } else {
-                  showDashboard();
                 }
               });
         })
@@ -136,7 +145,6 @@ function wireGuiUpEvents() {
       })
       .then((token) => {
 //        fetchData(token);
-        showDashboard();
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
