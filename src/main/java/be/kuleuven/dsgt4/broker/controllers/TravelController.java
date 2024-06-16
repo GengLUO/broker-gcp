@@ -12,23 +12,23 @@ public class TravelController {
 
     @GetMapping("/")
     public String showLoginForm() {
-        return "forward:/html/frontpage.html";
+        return "forward:/html/index.html";
     }
 
-    @GetMapping("/profile")
+    @GetMapping("/api/profile")
     public String showProfile() { return "forward:/html/profile.html";}
 
-    @GetMapping("/settings")
+    @GetMapping("/api/settings")
     public String showSettings() {
         return "forward:/html/settings.html";
     }
 
-    @GetMapping("/mybookings")
+    @GetMapping("/api/mybookings")
     public String showBookings() {
         return "forward:/html/mybookings.html";
     }
 
-    @GetMapping("/dashboard")
+    @GetMapping("/api/dashboard")
     public void showDashboard() {
     }
 
