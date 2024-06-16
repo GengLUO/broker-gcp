@@ -186,7 +186,8 @@ import {
     });
 
     if (!response.ok) {
-        console.error('confirm Flight Booking Error:', response.statusText);
+//        console.error('confirm Flight Booking Error:', response.statusText);
+        console.error('confirm Flight Booking Error:', response);
     } else {
         console.log('confirm Flight Booking Success:', response);
     }

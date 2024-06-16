@@ -46,11 +46,14 @@ public class BrokerService {
 
     public String publishMessage(String topicId, String message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
+        System.out.println(topicName);
         Publisher publisher = null;
         try {
             publisher = Publisher.newBuilder(topicName).build();
             ByteString data = ByteString.copyFromUtf8(message);
             PubsubMessage pubsubMessage = PubsubMessage.newBuilder().setData(data).build();
+            System.out.println("pubsubMessage: " + pubsubMessage);
+
             ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
 
             ApiFutures.addCallback(

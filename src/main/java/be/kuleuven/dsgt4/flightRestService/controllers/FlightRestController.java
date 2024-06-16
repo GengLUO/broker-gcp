@@ -16,7 +16,6 @@ import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
 
 import java.util.*;
 import java.util.stream.Collectors;
-import java.util.Optional;
 
 @RestController
 @RequestMapping("/flights")
@@ -82,6 +81,15 @@ public class FlightRestController {
         }
         boolean success = flightRepository.cancelFlight(flightId, seats);
         return success ? ResponseEntity.ok("Flight booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
+    }
+    @PostMapping("/pubsub/dummy-push")
+    public ResponseEntity<String> handleDummyPubSubPush(@RequestBody String message, @RequestParam String key) {
+        if (!API_KEY.equals(key)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+        System.out.println("Received message");
+        System.out.println(message);
+        return ResponseEntity.status(HttpStatus.OK).body("success");
     }
 
     @PostMapping("/pubsub/push")
