@@ -156,4 +156,16 @@ public class HotelRestController {
         }
         return ResponseEntity.notFound().build();
     }
+
+    @GetMapping("/test-webclient")
+    public ResponseEntity<String> testWebClient(@RequestParam String packageId) {
+        // Call TransactionService to trigger WebClient request
+        transactionService.confirmAction(packageId)
+                .subscribe(
+                        response -> System.out.println("Response from WebClient: " + response),
+                        error -> System.err.println("Error occurred: " + error.getMessage())
+                );
+
+        return ResponseEntity.ok("WebClient test triggered");
+    }
 }
