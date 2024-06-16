@@ -12,8 +12,8 @@ public class TravelController {
 
     @GetMapping("/")
     public String showLoginForm() {
-    //  return "forward:/html/frontpage.html";
-       return "forward:/html/index.html";
+      return "forward:/html/frontpage.html";
+//       return "forward:/html/index.html";
     }
 
     @GetMapping("/api/manager")
