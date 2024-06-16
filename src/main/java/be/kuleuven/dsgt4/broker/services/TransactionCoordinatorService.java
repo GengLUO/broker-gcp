@@ -190,12 +190,12 @@ public class TransactionCoordinatorService {
 
     // Methods for Before Booking
     public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
-        Firestore db = firestore;
-        db.runTransaction(transaction -> {
-           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-           transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
-               return null;
-        }).get();
+//        Firestore db = firestore;
+//        db.runTransaction(transaction -> {
+//           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+//           transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
+//               return null;
+//        }).get();
     }
 
     public void removeFlightFromPackage(String userId, String packageId, String flightId) throws ExecutionException, InterruptedException {
