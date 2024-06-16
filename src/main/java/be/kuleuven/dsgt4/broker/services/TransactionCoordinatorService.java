@@ -176,8 +176,8 @@ public class TransactionCoordinatorService {
     public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
-//            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-//            transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
+            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+            transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
                return null;
         }).get();
     }
