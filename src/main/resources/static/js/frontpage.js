@@ -98,9 +98,7 @@ function wireGuiUpEvents() {
         return userCredential.user.getIdToken();
       })
     .then((token) => {
-      createPackageWhenLoggedIn();
-    })
-    .then((token) => {
+        createPackageWhenLoggedIn();
       // Check the user's role and show the appropriate dashboard
           return fetch('/api/whoami', {
             headers: { Authorization: 'Bearer ' + token }
@@ -110,6 +108,9 @@ function wireGuiUpEvents() {
                 if (user.role === 'manager') {
                   showManagerDashboard();
                 }
+              else {
+            showDashboard();
+        }
               });
         })
         .catch((error) => {
