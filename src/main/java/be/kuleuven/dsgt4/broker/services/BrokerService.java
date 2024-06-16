@@ -132,7 +132,7 @@ public class BrokerService {
             // Provides an executor service for processing messages. The default
             // `executorProvider` used by the publisher has a default thread count of
             // 5 * the number of processors available to the Java virtual machine.
-            ExecutorProvider executorProvider = InstantiatingExecutorProvider.newBuilder().setExecutorThreadCount(5).build();
+            ExecutorProvider executorProvider = InstantiatingExecutorProvider.newBuilder().setExecutorThreadCount(10).build();
 
             publisher = Publisher.newBuilder(topicName).setEnableMessageOrdering(true).setExecutorProvider(executorProvider).build();
 

@@ -52,7 +52,7 @@ public class UIDataController {
         String packageId = (String) flightDetails.get("packageId");
         System.out.println("Package ID passed to addFlightToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Flight details: " + flightDetails);
-        return brokerRestController.addFlightToTravelPackage(userId, packageId, flightDetails);
+        return brokerRestController.addFlightToTravelPackage(packageId, flightDetails);
     }
 
     @PostMapping("/addHotel")
@@ -62,7 +62,7 @@ public class UIDataController {
         String packageId = (String) hotelDetails.get("packageId");
         System.out.println("Package ID passed to addHotelToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Hotel details: " + hotelDetails);
-       return brokerRestController.addHotelToTravelPackage(userId, packageId, hotelDetails);
+       return brokerRestController.addHotelToTravelPackage(packageId, hotelDetails);
     }
 
     @PostMapping("/bookPackage")
@@ -77,7 +77,7 @@ public class UIDataController {
         }
 
         String packageId = (String) bookingDetails.get("packageId");
-        return brokerRestController.bookTravelPackage(userId, packageId, bookingDetails);
+        return brokerRestController.bookTravelPackage(packageId, bookingDetails);
     }
 
 }

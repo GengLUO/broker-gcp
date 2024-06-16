@@ -143,7 +143,7 @@ public class TransactionCoordinatorService {
                 if (flightConfirmStatus && hotelConfirmStatus) {
                     confirmTravelPackage(packageId, packageSnapshot.getData());
                 } else {
-                    cancelTravelPackage((String) packageSnapshot.get("userId"), packageId);
+                    cancelTravelPackage(packageId);
                 }
             } else {
                 logger.info("Booking confirmation not yet complete for package: {}", packageId);
@@ -201,7 +201,7 @@ public class TransactionCoordinatorService {
     }
 
     // 3. Abort Phase of the 2PC Booking (Cancel Booking)
-    public ApiFuture<String> cancelTravelPackage(String userId, String packageId) {
+    public ApiFuture<String> cancelTravelPackage(String packageId) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
@@ -243,7 +243,7 @@ public class TransactionCoordinatorService {
     }
 
     // Methods for Before Booking
-    public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
+    public void addFlightToPackage(String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
        Firestore db = firestore;
        db.runTransaction(transaction -> {
           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -252,7 +252,7 @@ public class TransactionCoordinatorService {
        }).get();
     }
 
-    public void removeFlightFromPackage(String userId, String packageId, String flightId) throws ExecutionException, InterruptedException {
+    public void removeFlightFromPackage( String packageId, String flightId) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -264,7 +264,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void addHotelToPackage(String userId, String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException {
+    public void addHotelToPackage(String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -273,7 +273,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void removeHotelFromPackage(String userId, String packageId, String hotelId) throws ExecutionException, InterruptedException {
+    public void removeHotelFromPackage(String packageId, String hotelId) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -285,7 +285,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void addCustomerToPackage(String userId, String packageId, Map<String, Object> customerDetails) throws ExecutionException, InterruptedException {
+    public void addCustomerToPackage(String packageId, Map<String, Object> customerDetails) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -294,7 +294,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void removeCustomerFromPackage(String userId, String packageId, String customerId) throws ExecutionException, InterruptedException {
+    public void removeCustomerFromPackage(String packageId, String customerId) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -307,7 +307,7 @@ public class TransactionCoordinatorService {
     }
 
     // Methods for After Booking
-    public void updateFlightInPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException, IOException {
+    public void updateFlightInPackage(String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException, IOException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -321,7 +321,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void updateHotelInPackage(String userId, String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException, IOException {
+    public void updateHotelInPackage(String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException, IOException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
@@ -335,7 +335,7 @@ public class TransactionCoordinatorService {
         }).get();
     }
 
-    public void updateCustomerInPackage(String userId, String packageId, Map<String, Object> customerDetails) {
+    public void updateCustomerInPackage(String packageId, Map<String, Object> customerDetails) {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);

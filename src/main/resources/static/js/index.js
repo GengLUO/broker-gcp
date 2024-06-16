@@ -35,15 +35,19 @@ const localFirebaseConfig = {
   projectId: "broker-da44b"
 };
 
+// Use local or production configuration based on the hostname
+const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
+
+// Initialize Firebase app
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const user = auth.currentUser;
+const firestore = getFirestore(firebaseApp);
+
+export { firestore, auth, user }; 
+// can be accessed in other modules in the same folder (src/main/resources/static/js) using import { firestore, auth, user } from './index.js' or in other folders using import { firestore, auth, user } from '../js/index.js' 
+
 function setupAuth() {
-  // Use local or production configuration based on the hostname
-  const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
-
-  // Initialize Firebase app
-  const firebaseApp = initializeApp(firebaseConfig);
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
-
   // Set persistence to session
   setPersistence(auth, browserSessionPersistence)
     .catch((error) => {
@@ -60,6 +64,7 @@ function setupAuth() {
   window.firebaseApp = firebaseApp;
   window.auth = auth;
   window.firestore = firestore;
+  window.user = user;
 
   // Ensure any existing user is signed out
   try {
