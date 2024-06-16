@@ -2,6 +2,9 @@ package be.kuleuven.dsgt4.hotelRestService.controllers;
 
 import be.kuleuven.dsgt4.hotelRestService.domain.Hotel;
 import be.kuleuven.dsgt4.hotelRestService.domain.HotelRepository;
+import be.kuleuven.dsgt4.hotelRestService.exceptions.HotelNotFoundException;
+import be.kuleuven.dsgt4.hotelRestService.services.TransactionService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -9,8 +12,8 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.google.gson.Gson;
-
+import java.io.IOException;
+import java.util.Base64;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -22,9 +25,9 @@ public class HotelRestController {
 
     @Autowired
     private HotelRepository hotelRepository;
-
+    @Autowired
+    private TransactionService transactionService;
     private static final String API_KEY = "Iw8zeveVyaPNWonPNaU0213uw3g6Ei";
-    private final Gson gson = new Gson();
 
     //Simple test function to test subscriber function
     @PostMapping("/test")
@@ -61,71 +64,70 @@ public class HotelRestController {
         }
     }
 
-    @PostMapping("/book")
-    public ResponseEntity<String> bookHotel(@RequestBody Map<String, Object> bookingDetails, @RequestParam String key) {
-        if (!API_KEY.equals(key)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-        Long hotelId = Long.valueOf(bookingDetails.get("hotelId").toString());
-        int rooms = (int) bookingDetails.get("roomsBooked");
-        boolean success = hotelRepository.bookHotel(hotelId, rooms);
-        return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
-    }
-
-    @GetMapping("/available")
-    public ResponseEntity<Boolean> isHotelAvailable(@RequestParam Long hotelId, @RequestParam int rooms, @RequestParam String key) {
-        if (!API_KEY.equals(key)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-        boolean available = hotelRepository.isHotelAvailable(hotelId, rooms);
-        return ResponseEntity.ok(available);
-    }
-
-    @PostMapping("/cancel")
-    public ResponseEntity<String> cancelHotel(@RequestParam Long hotelId, @RequestParam int rooms, @RequestParam String key) {
-        if (!API_KEY.equals(key)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
-        }
-        boolean success = hotelRepository.cancelHotel(hotelId, rooms);
-        return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
-    }
-
+    //RESERVE
     @PostMapping("/pubsub/push")
-    public ResponseEntity<String> handlePubSubPush(@RequestBody Map<String, Object> message) {
-        String messageType = (String) message.get("type");
-        switch (messageType) {
-            case "hotel-booking-requests":
-                return handleHotelAddRequest(message);
-            case "hotel-cancel-requests":
-                return handleHotelCancelRequest(message);
-            case "hotel-update-requests":
-                return handleHotelUpdateRequest(message);
-            default:
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Invalid message type");
+    public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> messageWrapper) {
+        try {
+            Map<String, Object> message = (Map<String, Object>) messageWrapper.get("message");
+            String base64EncodedData = (String) message.get("data");
+            String decodedData = new String(Base64.getDecoder().decode(base64EncodedData));
+            System.out.println("Decoded message data: " + decodedData);
+
+            // Parse the decoded data
+            ObjectMapper mapper = new ObjectMapper();
+            Map<String, Object> dataMap = mapper.readValue(decodedData, Map.class);
+
+            // Extract required fields
+            String packageId = (String) dataMap.get("packageId");
+            Long hotelId = Long.parseLong((String) dataMap.get("hotelId"));
+            int rooms = Integer.parseInt((String) dataMap.get("roomsBooked"));
+            System.out.println("hotelId = " + hotelId + "rooms = " + rooms);
+
+            // Call hotelRepository to prepare hotel
+            boolean success = hotelRepository.prepareHotel(hotelId, rooms);
+
+            if (success) {
+                System.out.println("Successfully booked hotel for packageId: " + packageId);
+                transactionService.confirmAction(packageId, hotelId);
+
+                return ResponseEntity.ok("Hotel booked successfully");
+            } else {
+                System.out.println("Booking failed for packageId: " + packageId);
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+            }
+        } catch (ClassCastException | IllegalArgumentException | NullPointerException |
+                 IOException e) {
+            // Handle exceptions gracefully
+            System.err.println("Error processing message: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing message");
         }
     }
 
-    private ResponseEntity<String> handleHotelAddRequest(Map<String, Object> message) {
-        Long hotelId = Long.valueOf(message.get("hotelId").toString());
-        int rooms = (int) message.get("roomsBooked");
-        boolean success = hotelRepository.bookHotel(hotelId, rooms);
-
-        return success ? ResponseEntity.ok("Hotel booked") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+    // Commit a transaction
+    @PostMapping("/commit/{id}/{seats}")
+    public ResponseEntity<EntityModel<Hotel>> commitHotel(@PathVariable Long id, @PathVariable int rooms) {
+        boolean exists = hotelRepository.commitHotel(id);
+        if (exists) {
+            Hotel hotel = hotelRepository.getHotelById(id).orElseThrow(() -> new HotelNotFoundException(id));
+            EntityModel<Hotel> entityModel = EntityModel.of(hotel);
+            entityModel.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).commitHotel(id, rooms)).withSelfRel());
+            entityModel.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).rollbackHotel(id, rooms)).withRel("rollback"));
+            return ResponseEntity.ok(entityModel);
+        }
+        return ResponseEntity.notFound().build();
     }
 
-    private ResponseEntity<String> handleHotelCancelRequest(Map<String, Object> message) {
-        Long hotelId = Long.valueOf(message.get("hotelId").toString());
-        int rooms = (int) message.get("roomsBooked");
-        boolean success = hotelRepository.cancelHotel(hotelId, rooms);
-
-        return success ? ResponseEntity.ok("Hotel booking cancelled") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Cancellation failed");
-    }
-
-    private ResponseEntity<String> handleHotelUpdateRequest(Map<String, Object> message) {
-        Long hotelId = Long.valueOf(message.get("hotelId").toString());
-        int newRooms = (int) message.get("newRoomsBooked");
-        boolean success = hotelRepository.updateHotelBooking(hotelId, newRooms);
-
-        return success ? ResponseEntity.ok("Hotel booking updated") : ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Update failed");
+    // Rollback a transaction
+    @PostMapping("/rollback/{id}/{seats}")
+    public ResponseEntity<EntityModel<Hotel>> rollbackHotel(@PathVariable Long id, @PathVariable int rooms) {
+        boolean success = hotelRepository.rollbackHotel(id, rooms);
+        if (success) {
+            Hotel hotel = hotelRepository.getHotelById(id).orElseThrow(() -> new HotelNotFoundException(id));
+            EntityModel<Hotel> entityModel = EntityModel.of(hotel);
+            entityModel.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).rollbackHotel(id, rooms)).withSelfRel());
+            entityModel.add(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(HotelRestController.class).commitHotel(id, rooms)).withRel("commit"));
+            return ResponseEntity.ok(entityModel);
+        }
+        return ResponseEntity.notFound().build();
     }
 }
