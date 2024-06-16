@@ -4,7 +4,6 @@ import be.kuleuven.dsgt4.hotelRestService.domain.Hotel;
 import be.kuleuven.dsgt4.hotelRestService.domain.HotelRepository;
 import be.kuleuven.dsgt4.hotelRestService.exceptions.HotelNotFoundException;
 import be.kuleuven.dsgt4.hotelRestService.services.TransactionService;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -12,11 +11,7 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import java.io.IOException;
-import java.util.Base64;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @RestController
@@ -64,46 +59,76 @@ public class HotelRestController {
         }
     }
 
-    //RESERVE
+    //pubsub
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> messageWrapper) {
         try {
             Map<String, Object> message = (Map<String, Object>) messageWrapper.get("message");
-            String base64EncodedData = (String) message.get("data");
-            String decodedData = new String(Base64.getDecoder().decode(base64EncodedData));
-            System.out.println("Decoded message data: " + decodedData);
+            Map<String, String> attributes = (Map<String, String>) message.get("attributes");
 
-            // Parse the decoded data
-            ObjectMapper mapper = new ObjectMapper();
-            Map<String, Object> dataMap = mapper.readValue(decodedData, Map.class);
+            // Extract required fields from attributes
+            String packageId = attributes.get("packageId");
+            Long hotelId = Long.parseLong(attributes.get("hotelId"));
+            int roomsBooked = Integer.parseInt(attributes.get("roomsBooked"));
+            Long flightId = Long.parseLong(attributes.get("flightId"));
+            int seatsBooked = Integer.parseInt(attributes.get("seatsBooked"));
+            String userId = attributes.get("userId");
+            String customerName = attributes.get("customerName");
+            String action = attributes.get("action");
 
-            // Extract required fields
-            String packageId = (String) dataMap.get("packageId");
-            Long hotelId = Long.parseLong((String) dataMap.get("hotelId"));
-            int rooms = Integer.parseInt((String) dataMap.get("roomsBooked"));
-            System.out.println("hotelId = " + hotelId + "rooms = " + rooms);
+            // Print all attributes
+            System.out.println("Received message attributes:");
+            System.out.println("packageId: " + packageId);
+            System.out.println("hotelId: " + hotelId);
+            System.out.println("roomsBooked: " + roomsBooked);
+            System.out.println("flightId: " + flightId);
+            System.out.println("seatsBooked: " + seatsBooked);
+            System.out.println("userId: " + userId);
+            System.out.println("customerName: " + customerName);
 
-            // Call hotelRepository to prepare hotel
-            boolean success = hotelRepository.prepareHotel(hotelId, rooms);
-
-            if (success) {
-                System.out.println("Successfully booked hotel for packageId: " + packageId);
-                transactionService.confirmAction(packageId, hotelId);
-
-                return ResponseEntity.ok("Hotel booked successfully");
-            } else {
-                System.out.println("Booking failed for packageId: " + packageId);
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+            boolean success = false;
+            switch (action) {
+                //PREPARE
+                case "PREPARE":
+                    success = hotelRepository.prepareHotel(hotelId, roomsBooked);
+                    if (success) {
+                        System.out.println("Successfully booked hotel for packageId: " + packageId);
+                        transactionService.confirmAction(packageId, flightId);
+                        return ResponseEntity.ok("Hotel booked successfully");
+                    }
+                    break;
+                    //COMMIT
+                case "COMMIT":
+                    success = hotelRepository.commitHotel(hotelId);
+                    if (success) {
+                        System.out.println("Successfully committed the hotel for hotelId: " + hotelId);
+                        return ResponseEntity.ok("Hotel committed successfully");
+                    }
+                    break;
+                    //ROLLBACK
+                case "ROLLBACK":
+                    success = hotelRepository.rollbackHotel(hotelId, roomsBooked);
+                    if (success) {
+                        System.out.println("Successfully rolled back hotel for packageId: " + packageId + ", hotelId: " + hotelId + ", roomsBooked: " + roomsBooked);
+                        return ResponseEntity.ok("Hotel rolled back successfully");
+                    }
+                    break;
+                default:
+                    System.out.println("Unknown action: " + action);
+                    break;
             }
-        } catch (ClassCastException | IllegalArgumentException | NullPointerException |
-                 IOException e) {
-            // Handle exceptions gracefully
+
+            System.out.println("Booking failed for packageId: " + packageId + "action = " + action);
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Booking failed");
+
+        } catch (ClassCastException | IllegalArgumentException | NullPointerException e) {
             System.err.println("Error processing message: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing message");
         }
+
     }
 
-    // Commit a transaction
+    // Commit a transaction using WebClient
     @PostMapping("/commit/{id}/{seats}")
     public ResponseEntity<EntityModel<Hotel>> commitHotel(@PathVariable Long id, @PathVariable int rooms) {
         boolean exists = hotelRepository.commitHotel(id);
@@ -117,7 +142,7 @@ public class HotelRestController {
         return ResponseEntity.notFound().build();
     }
 
-    // Rollback a transaction
+    // Rollback a transaction using WebClient
     @PostMapping("/rollback/{id}/{seats}")
     public ResponseEntity<EntityModel<Hotel>> rollbackHotel(@PathVariable Long id, @PathVariable int rooms) {
         boolean success = hotelRepository.rollbackHotel(id, rooms);
