@@ -93,7 +93,7 @@ public class HotelRestController {
                     success = hotelRepository.prepareHotel(hotelId, roomsBooked);
                     if (success) {
                         System.out.println("Successfully booked hotel for packageId: " + packageId);
-                        transactionService.confirmAction(packageId, flightId);
+                        transactionService.confirmAction(packageId);
                         return ResponseEntity.ok("Hotel booked successfully");
                     }
                     break;
