@@ -97,19 +97,8 @@ function wireGuiUpEvents() {
         storeUserInfo(userCredential.user);
         return userCredential.user.getIdToken();
       })
-      .catch((error) => {
-        console.error("Error during sign in:", error.message);
-        alert(error.message);
-      });
-        .then(() => {
-          return signInWithEmailAndPassword(window.auth, email.value, password.value);
-        })
-        .then((userCredential) => {
-          storeUserInfo(userCredential.user);
-          return userCredential.user.getIdToken();
-        })
-        .then((token) => {
-          // Check the user's role and show the appropriate dashboard
+    .then((token) => {
+      // Check the user's role and show the appropriate dashboard
           return fetch('/api/whoami', {
             headers: { Authorization: 'Bearer ' + token }
           })
