@@ -15,24 +15,24 @@ import {
       connectFirestoreEmulator(firestore, 'localhost', 8084);
     }
 
-    setPersistence(auth, browserSessionPersistence)
-      .then(() => {
-        onAuthStateChanged(auth, (user) => {
-          if (user) {
-            user.getIdToken().then((token) => {
-              fetchData(token, user.uid); // Pass the user ID to fetchData
-            }).catch((error) => {
-              console.error("Error getting ID token:", error);
-            });
-          } else {
-            // Return to the login page if the user is not logged in
-            window.location.href = 'html/index.html';
-          }
-        });
-      })
-      .catch((error) => {
-        console.error("Error setting persistence:", error);
-      });
+    // setPersistence(auth, browserSessionPersistence)
+    //   .then(() => {
+    //     onAuthStateChanged(auth, (user) => {
+    //       if (user) {
+    //         user.getIdToken().then((token) => {
+    //           fetchData(token, user.uid); // Pass the user ID to fetchData
+    //         }).catch((error) => {
+    //           console.error("Error getting ID token:", error);
+    //         });
+    //       } else {
+    //         // Return to the login page if the user is not logged in
+    //         window.location.href = 'html/index.html';
+    //       }
+    //     });
+    //   })
+    //   .catch((error) => {
+    //     console.error("Error setting persistence:", error);
+    //   });
   }
 
   // Call the setup function when the page loads
