@@ -32,11 +32,7 @@ public class Dsgt4Application {
 
     @Bean
     public String projectId() {
-        if (this.isProduction()) {
-            return "broker-da44b"; // production project ID
-        } else {
-            return "broker-da44b"; // local project ID
-        }
+        return "broker-da44b"; // local project ID
     }
 
     @Bean
