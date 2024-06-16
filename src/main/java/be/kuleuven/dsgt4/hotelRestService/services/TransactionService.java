@@ -8,14 +8,19 @@ import reactor.core.publisher.Mono;
 
 @Service
 public class TransactionService {
-    private final WebClient webClient;
+    private final WebClient.Builder webClientBuilder;
     //    TODO: change the endpoint
 //    https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel
     private static final String CONFIRM_ENDPOINT = "https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel";
 
+//    @Autowired
+//    public TransactionService(WebClient.Builder webClientBuilder) {
+//        this.webClient = webClientBuilder.build();
+//    }
+
     @Autowired
     public TransactionService(WebClient.Builder webClientBuilder) {
-        this.webClient = webClientBuilder.build();
+        this.webClientBuilder = webClientBuilder;
     }
 
     public Mono<String> confirmAction(String packageId) {
@@ -25,9 +30,10 @@ public class TransactionService {
 
         System.out.println("Request body sent: " + requestBody);
 
-        return this.webClient.post()
+        return webClientBuilder.build()
+                .post()
                 .uri(CONFIRM_ENDPOINT)
-                .body(BodyInserters.fromPublisher(requestBody, String.class))
+                .body(BodyInserters.fromValue(packageId))
                 .retrieve()
                 .bodyToMono(String.class)
                 .doOnSuccess(response -> {
