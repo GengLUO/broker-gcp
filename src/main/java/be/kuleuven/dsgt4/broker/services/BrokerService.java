@@ -1,36 +1,45 @@
 package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutureCallback;
+import com.google.api.core.ApiFutures;
 import com.google.api.gax.core.CredentialsProvider;
+import com.google.api.gax.core.ExecutorProvider;
+import com.google.api.gax.core.InstantiatingExecutorProvider;
 import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.grpc.GrpcTransportChannel;
+import com.google.api.gax.rpc.ApiException;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminClient;
 import com.google.cloud.pubsub.v1.TopicAdminSettings;
-import com.google.gson.Gson;
+import com.google.common.util.concurrent.MoreExecutors;
 import com.google.protobuf.ByteString;
-import com.google.pubsub.v1.*;
+import com.google.pubsub.v1.PubsubMessage;
+import com.google.pubsub.v1.PushConfig;
+import com.google.pubsub.v1.Subscription;
+import com.google.pubsub.v1.SubscriptionName;
+import com.google.pubsub.v1.TopicName;
+import com.google.pubsub.v1.Topic;
+import java.io.IOException;
 import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
-
+import java.util.concurrent.atomic.AtomicBoolean;
 @Service
 public class BrokerService {
 
     private static final String PROJECT_ID = "broker-da44b";
-    private final Gson gson = new Gson();
 
     @Autowired
     public BrokerService() {}
@@ -46,9 +55,29 @@ public class BrokerService {
             System.out.println("pubsubMessage: " + pubsubMessage);
 
             ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
-            String messageId = messageIdFuture.get();
-            System.out.println("Published message ID: " + messageId);
-            return messageId;
+
+            ApiFutures.addCallback(
+                messageIdFuture,
+                new ApiFutureCallback<String>() {
+                    @Override
+                    public void onFailure(Throwable throwable) {
+                        if (throwable instanceof ApiException) {
+                            ApiException apiException = ((ApiException) throwable);
+                            System.err.println("API Exception: " + apiException.getStatusCode().getCode());
+                            System.err.println("Retryable: " + apiException.isRetryable());
+                        } else {
+                            System.err.println("Error publishing message: " + throwable.getMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onSuccess(String messageId) {
+                        System.out.println("Published message ID: " + messageId);
+                    }
+                },
+                MoreExecutors.directExecutor()
+            );
+            return messageIdFuture.get();
         } finally {
             if (publisher != null) {
                 publisher.shutdown();
@@ -97,8 +126,80 @@ public class BrokerService {
     }
 
     public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
-        String jsonMessage = gson.toJson(message);
-        return publishMessage(topicId, jsonMessage);
+        TopicName topicName = TopicName.of(PROJECT_ID, topicId);
+        Publisher publisher = null;
+        try {
+            // Provides an executor service for processing messages. The default
+            // `executorProvider` used by the publisher has a default thread count of
+            // 5 * the number of processors available to the Java virtual machine.
+            ExecutorProvider executorProvider = InstantiatingExecutorProvider.newBuilder().setExecutorThreadCount(5).build();
+
+            publisher = Publisher.newBuilder(topicName).setEnableMessageOrdering(true).setExecutorProvider(executorProvider).build();
+
+            // Convert the map to attributes
+            Map<String, String> attributes = new HashMap<>();
+            for (Map.Entry<String, Object> entry : message.entrySet()) {
+                attributes.put(entry.getKey(), entry.getValue().toString());
+            }
+
+            PubsubMessage pubsubMessage = PubsubMessage.newBuilder()
+                    .putAllAttributes(attributes)
+                    .build();
+
+            ApiFuture<String> messageIdFuture = publisher.publish(pubsubMessage);
+            AtomicBoolean isRetryable = new AtomicBoolean();
+            ApiFutures.addCallback(
+                messageIdFuture,
+                new ApiFutureCallback<String>() {
+                    @Override
+                    public void onFailure(Throwable throwable) {
+                        if (throwable instanceof ApiException) {
+                            ApiException apiException = ((ApiException) throwable);
+                            System.err.println("API Exception: " + apiException.getStatusCode().getCode());
+                            System.err.println("Retryable: " + apiException.isRetryable());
+                            isRetryable.set(apiException.isRetryable());
+                        } else {
+                            System.err.println("Error publishing message: " + throwable.getMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onSuccess(String messageId) {
+                        System.out.println("Published message ID: " + messageId);
+                    }
+                },
+                MoreExecutors.directExecutor()
+            );
+            return isRetryable.get() ? messageIdFuture.get() : null;
+        } finally {
+            if (publisher != null) {
+                publisher.shutdown();
+                publisher.awaitTermination(1, TimeUnit.MINUTES);
+            }
+        }
+    }
+
+    private boolean shouldRetry(String statusCode) {
+        switch (statusCode) {
+            case "ABORTED":
+            case "CANCELLED":
+            case "DEADLINE_EXCEEDED":
+            case "INTERNAL":
+            case "RESOURCE_EXHAUSTED":
+            case "UNAVAILABLE":
+            case "UNKNOWN":
+                return true;
+            default:
+                return false;
+        }
+    }
+
+    public static void createTopic(String projectId, String topicId) throws IOException {
+        try (TopicAdminClient topicAdminClient = TopicAdminClient.create()) {
+          TopicName topicName = TopicName.of(projectId, topicId);
+          Topic topic = topicAdminClient.createTopic(topicName);
+          System.out.println("Created topic: " + topic.getName());
+        }
     }
 
     public static void createPushSubscription(String projectId, String subscriptionId, String topicId, String pushEndpoint) throws IOException {
