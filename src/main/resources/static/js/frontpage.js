@@ -254,7 +254,7 @@ document.addEventListener('DOMContentLoaded', () => {
     customerName: ""
   };
 
-  fetch('/travel/createPackage', {
+  fetch('/api/travel/createPackage', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -372,7 +372,7 @@ async function confirmFlightBooking(event) {
 
   document.getElementById('confirmBooking').classList.remove('hidden');
 
-  const response = await fetch('/travel/addFlight', {
+  const response = await fetch('/api/travel/addFlight', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json'
@@ -432,7 +432,7 @@ async function confirmHotelBooking(event) {
 
   document.getElementById('confirmBooking').classList.remove('hidden');
 
-  const response = await fetch('/travel/addHotel', {
+  const response = await fetch('/api/travel/addHotel', {
       method: 'POST',
       headers: {
           'Content-Type': 'application/json'
@@ -514,7 +514,7 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
       customerName: customerName
   };
 
-  sendData('/travel/bookPackage', bookingDetails).then(response => {
+  sendData('/api/travel/bookPackage', bookingDetails).then(response => {
       console.log(response);
       alert('Booking confirmed!');
       document.getElementById('flightBookingForm').reset();

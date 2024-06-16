@@ -16,7 +16,7 @@ import java.util.Map;
 import java.util.UUID;
 
 @Controller
-@RequestMapping("/travel")
+@RequestMapping("/api/travel")
 public class UIDataController {
 
     private final BrokerRestController brokerRestController;
