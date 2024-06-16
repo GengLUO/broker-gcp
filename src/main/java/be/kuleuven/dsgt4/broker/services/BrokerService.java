@@ -170,6 +170,10 @@ public class BrokerService {
                 },
                 MoreExecutors.directExecutor()
             );
+            // print into console and system out the message id future and return it
+            System.out.println("Message ID Future: " + messageIdFuture);
+            System.out.println("Message ID Future get: " + messageIdFuture.get());
+            
             return isRetryable.get() ? messageIdFuture.get() : null;
         } finally {
             if (publisher != null) {

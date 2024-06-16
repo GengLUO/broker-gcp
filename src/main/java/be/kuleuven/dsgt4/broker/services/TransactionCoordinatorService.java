@@ -88,7 +88,7 @@ public class TransactionCoordinatorService {
             if (flightMessageId == null) {
                 logger.error("Failed to publish flight-add-requests message");
                 // reutrn null to indicate messgae publish failure (could not be retried)
-                return null;
+                // return null;
             }
 
             for (Map<String, Object> flight : flights) {
@@ -101,7 +101,7 @@ public class TransactionCoordinatorService {
             if (hotelMessageId == null) {
                 logger.error("Failed to publish hotel-add-requests message");
                 // reutrn null to indicate messgae publish failure (could not be retried)
-                return null;
+                // return null;
             }
             for (Map<String, Object> hotel : hotels) {
                 String hotelId = (String) hotel.get("hotelId");
