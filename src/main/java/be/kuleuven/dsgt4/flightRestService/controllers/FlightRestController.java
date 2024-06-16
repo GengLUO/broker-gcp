@@ -101,7 +101,7 @@ public class FlightRestController {
     }
 
     // Commit a transaction
-    @PostMapping("/commit/{id}")
+    @PostMapping("/commit/{id}/{seats}")
     public ResponseEntity<EntityModel<Flight>> commitFlight(@PathVariable Long id, @PathVariable int seats) {
         boolean exists = flightRepository.commitFlight(id);
         if (exists) {
