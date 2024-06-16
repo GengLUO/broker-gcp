@@ -27,7 +27,13 @@ public class TransactionService {
                 .body(BodyInserters.fromValue(request))
                 .retrieve()
                 .bodyToMono(String.class)
-                .onErrorResume(e -> Mono.just("Error occurred: " + e.getMessage()));
+                .doOnSuccess(response -> {
+                    System.out.println("Response received: " + response);
+                })
+                .onErrorResume(e -> {
+                    System.out.println("Error occurred: " + e.getMessage());
+                    return Mono.just("Error occurred: " + e.getMessage());
+                });
     }
 
     private static class ConfirmRequest {
