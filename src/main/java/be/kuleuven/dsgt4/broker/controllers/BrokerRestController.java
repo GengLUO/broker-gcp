@@ -13,6 +13,7 @@ import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
+import com.google.protobuf.Api;
 import com.google.api.core.ApiFutureCallback;
 
 import java.util.HashMap;
@@ -173,7 +174,7 @@ public class BrokerRestController {
         }
     }
 
-    // Booking Method
+    // Booking Methods: 2PC transaction preparation
     @PostMapping("/{userId}/packages/{packageId}/book")
     public ResponseEntity<?> bookTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
         ApiFuture<String> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
@@ -191,6 +192,43 @@ public class BrokerRestController {
             }
         }, Runnable::run);
         return ResponseEntity.ok("Booking process initiated for user ID: " + userId + " and package ID: " + packageId);
+    }
+
+    // Booking Methods: 2PC transaction execution
+    @PostMapping("/{userId}/packages/{packageId}/confirm")
+    public ResponseEntity<String> confrimTravelPackageBooking(@RequestBody Map<String, Object> bookingDetails) {
+        String packageId = (String) bookingDetails.get("packageId");
+        ApiFuture<String> result = transactionCoordinatorService.confirmTravelPackage(packageId, bookingDetails);
+        ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+            @Override
+            public void onFailure(Throwable t) {
+                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking confirmation: " + t.getMessage());
+            }
+
+            @Override
+            public void onSuccess(String messageId) {
+                ResponseEntity.ok("Travel package booking confirmed.");
+            }
+        }, Runnable::run);
+        return ResponseEntity.ok("Booking confirmation process initiated for package ID: " + packageId);
+    }
+
+    // Booking Methods: 2PC transaction execution (abort)
+    @DeleteMapping("/{userId}/packages/{packageId}/cancel")
+    public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
+        ApiFuture<String> result = transactionCoordinatorService.cancelTravelPackage(userId, packageId);
+        ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+            @Override
+            public void onFailure(Throwable t) {
+                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package cancellation: " + t.getMessage());
+            }
+
+            @Override
+            public void onSuccess(String messageId) {
+                ResponseEntity.ok("Travel package cancelled for user ID: " + userId + " and package ID: " + packageId);
+            }
+        }, Runnable::run);
+        return null;
     }
 
     // After Booking Methods
@@ -222,48 +260,6 @@ public class BrokerRestController {
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to update customer in travel package: " + e.getMessage());
         }
-    }
-
-    @DeleteMapping("/{userId}/packages/{packageId}")
-    public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
-        ApiFuture<Void> result = transactionCoordinatorService.cancelTravelPackage(userId, packageId);
-        ApiFutures.addCallback(result, new ApiFutureCallback<Void>() {
-            @Override
-            public void onFailure(Throwable t) {
-                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to cancel travel package for user ID: " + userId + " and package ID: " + packageId);
-            }
-
-            @Override
-            public void onSuccess(Void v) {
-                ResponseEntity.ok("Travel package cancelled for user ID: " + userId + " and package ID: " + packageId);
-            }
-        }, Runnable::run);
-        return ResponseEntity.ok("Cancellation process initiated for user ID: " + userId + " and package ID: " + packageId);
-    }
-
-    @PostMapping("/hotel/pubsub/push")
-    public ResponseEntity<String> handleHotelPubSubPush(@RequestBody Map<String, Object> message) {
-        return handlePubSubPush(message, "hotel");
-    }
-
-    @PostMapping("/flight/pubsub/push")
-    public ResponseEntity<String> handleFlightPubSubPush(@RequestBody Map<String, Object> message) {
-        return handlePubSubPush(message, "flight");
-    }
-
-    private ResponseEntity<String> handlePubSubPush(Map<String, Object> message, String type) {
-        String packageId = (String) message.get("packageId");
-        String userId = (String) message.get("userId");
-        Long id = Long.valueOf(message.get(type + "Id").toString());
-        int booked = (int) message.get(type + "sBooked");
-        boolean success = (boolean) message.get("success");
-
-        // Process the response
-        System.out.println(type + " booking response: " + message);
-
-        // Here you can add logic to update Firestore or perform other actions based on the response
-
-        return ResponseEntity.ok("Message processed");
     }
 
     private EntityModel<String> bookingToEntityModel(String userId, String packageId, String message) {

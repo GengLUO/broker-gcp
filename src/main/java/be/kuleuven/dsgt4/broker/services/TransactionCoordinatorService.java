@@ -124,8 +124,8 @@ public class TransactionCoordinatorService {
             List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
 
             // Commit Phase
-            String flightMessageId = brokerService.publishMessage("flight-booking-requests", bookingDetails);
-            if (flightMessageId == null) {
+            String confirmMessageId = brokerService.publishMessage("booking-requests", bookingDetails);
+            if (confirmMessageId == null) {
                 logger.error("Failed to publish flight-booking-requests message");
                 // reutrn null to indicate message failure (could not be retried)
                 return null;
@@ -134,13 +134,6 @@ public class TransactionCoordinatorService {
                 String flightId = (String) flight.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "status", "committed");
-            }
-
-            String hotelMessageId = brokerService.publishMessage("hotel-booking-requests", bookingDetails);
-            if (hotelMessageId == null) {
-                logger.error("Failed to publish hotel-booking-requests message");
-                // reutrn null to indicate message failure (could not be retried)
-                return null;
             }
             for (Map<String, Object> hotel : hotels) {
                 String hotelId = (String) hotel.get("hotelId");
@@ -154,7 +147,7 @@ public class TransactionCoordinatorService {
     }
 
     // 3. Abort Phase of the 2PC Booking (Cancel Booking)
-    public ApiFuture<Void> cancelTravelPackage(String userId, String packageId) {
+    public ApiFuture<String> cancelTravelPackage(String userId, String packageId) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
@@ -169,22 +162,23 @@ public class TransactionCoordinatorService {
             List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
 
             // Commit Phase for Cancellation
-            String flightMessageId = brokerService.publishMessage("flight-cancel-request", packageSnapshot.getData());
+            String cancelMessageId = brokerService.publishMessage("cancel-request", packageSnapshot.getData());
+            if (cancelMessageId == null) {
+                logger.error("Failed to publish flight-cancel-requests message");
+            }
             for (Map<String, Object> flight : flights) {
                 String flightId = (String) flight.get("flightId");
                 DocumentReference flightRef = db.collection("flights").document(flightId);
                 transaction.update(flightRef, "status", "abort");
             }
 
-            String hotelMessageId = brokerService.publishMessage("hotel-cancel-request", packageSnapshot.getData());
-            brokerService.publishMessage("hotel-confirm-cancel-request", packageSnapshot.getData());
             for (Map<String, Object> hotel : hotels) {
                 String hotelId = (String) hotel.get("hotelId");
                 DocumentReference hotelRef = db.collection("hotels").document(hotelId);
                 transaction.update(hotelRef, "bookedRooms", FieldValue.increment(-(Integer) hotel.get("roomsBooked")));
                 transaction.update(hotelRef, "status", "abort");
             }
-            return null;
+            return "Travel Package " + packageId + " cancelled successfully.";
         });
     }
 
