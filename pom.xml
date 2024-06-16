@@ -9,7 +9,7 @@
     <name>dsgt4</name>
     <description>DSGT4</description>
     <properties>
-        <zip.filename>cloud-2.firstname.lastname</zip.filename>
+        <zip.filename>finalq</zip.filename>
         <java.version>17</java.version>
         <maven.compiler.target>17</maven.compiler.target>
         <maven.compiler.source>17</maven.compiler.source>

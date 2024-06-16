@@ -5,15 +5,15 @@ import org.springframework.util.Assert;
 
 import javax.annotation.PostConstruct;
 import java.util.Collection;
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
 
 @Component
 public class HotelRepository {
 
     // map: id -> hotel
-    private static final Map<Long, Hotel> hotels = new HashMap<>();
+    private static final Map<Long, Hotel> hotels = new ConcurrentHashMap<>();
 
     @PostConstruct
     public void initData() {
@@ -62,6 +62,55 @@ public class HotelRepository {
         Hotel hotel = hotels.get(hotelId);
         if (hotel != null) {
             hotel.setAvailableRooms(hotel.getAvailableRooms() + newRooms);
+            return true;
+        }
+        return false;
+    }
+
+    // Create
+    public synchronized void addHotel(Hotel hotel) {
+        hotels.put(hotel.getId(), hotel);
+    }
+
+    // Update
+    public synchronized boolean updateHotel(Long id, Hotel updatedHotel) {
+        if (hotels.containsKey(id)) {
+            hotels.put(id, updatedHotel);
+            return true;
+        }
+        return false;
+    }
+
+    // Delete
+    public synchronized boolean deleteHotel(Long id) {
+        if (hotels.containsKey(id)) {
+            hotels.remove(id);
+            return true;
+        }
+        return false;
+    }
+
+    //PREPARE
+    public synchronized boolean prepareHotel(Long id, int nrOfChangedSeat) {
+        Hotel hotel = hotels.get(id);
+        if (hotel != null && hotel.getAvailableRooms() >= nrOfChangedSeat) {
+            hotel.setAvailableRooms(hotel.getAvailableRooms() - nrOfChangedSeat);
+            System.out.println("Prepare hotel!");
+            return true;
+        }
+        return false;
+    }
+
+    //COMMIT
+    public synchronized boolean commitHotel(Long id) {
+        return hotels.containsKey(id);
+    }
+
+    //ROLLBACK
+    public synchronized boolean rollbackHotel(Long id, int nrOfChangedSeat) {
+        Hotel hotel = hotels.get(id);
+        if (hotel != null) {
+            hotel.setAvailableRooms(hotel.getAvailableRooms() + nrOfChangedSeat);
             return true;
         }
         return false;
