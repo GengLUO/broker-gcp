@@ -171,6 +171,32 @@ function showDashboard() {
   document.getElementById("dashboardContent").style.display = "block";
   document.getElementById("dashboardManagerContent").style.display = "none";
 
+    const uid = sessionStorage.getItem('uid');
+    const packageDetails = {
+        packageId: "",
+        userId: uid,
+        hotelId: "",
+        flightId: "",
+        roomsBooked: 0,
+        seatsBooked: 0,
+        customerName: ""
+    };
+
+    fetch('/api/travel/createPackage', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(packageDetails)
+    })
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('packageId').value = data.packageId;
+        })
+        .catch(error => console.error('Error:', error));
+
+    addEventListeners(document.querySelector('.flight-booking'));
+    addEventListeners(document.querySelector('.hotel-booking'));
 }
 
 function showManagerDashboard() {
@@ -261,35 +287,6 @@ function setupDashboard() {
       console.error("Error setting persistence:", error);
     });
 }
-
-document.addEventListener('DOMContentLoaded', () => {
-  const uid = sessionStorage.getItem('uid');
-  const packageDetails = {
-    packageId: "",
-    userId: uid,
-    hotelId: "",
-    flightId: "",
-    roomsBooked: 0,
-    seatsBooked: 0,
-    customerName: ""
-  };
-
-  fetch('/api/travel/createPackage', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(packageDetails)
-    })
-      .then(response => response.json())
-      .then(data => {
-        document.getElementById('packageId').value = data.packageId;
-      })
-      .catch(error => console.error('Error:', error));
-
-  addEventListeners(document.querySelector('.flight-booking'));
-  addEventListeners(document.querySelector('.hotel-booking'));
-});
 
 async function sendData(url, data) {
   const response = await fetch(url, {
