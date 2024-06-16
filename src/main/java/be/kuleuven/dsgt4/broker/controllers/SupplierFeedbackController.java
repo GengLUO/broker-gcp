@@ -8,6 +8,9 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+
+import com.google.rpc.context.AttributeContext.Response;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -24,7 +27,6 @@ public class SupplierFeedbackController {
         this.brokerRestController = brokerRestController;
     }
     @PostMapping("/confirmHotel")
-    // @ResponseBody
     public ResponseEntity<?> confirmHotel(@RequestBody String packageId) {
         logger.info("passing hotel confirmed info packageId to boroker rest controller: " + packageId);
         brokerRestController.confirmHotelBooking(packageId);
@@ -33,16 +35,18 @@ public class SupplierFeedbackController {
     }
 
     @PostMapping("/confirmFlight")
-    // @ResponseBody
     public ResponseEntity<?> confirmFlight(@RequestBody String packageId) {
         logger.info("passing flight confirmed info packageId to boroker rest controller: " + packageId);
-        brokerRestController.confirmFlightBooking(packageId);
+        // get the response entity from brokerRestController.confirmFlightBooking
+        ResponseEntity<?> responseEntity = brokerRestController.confirmFlightBooking(packageId);
+        // show in the console the response entity
+        System.out.println(responseEntity);
         // set response status to 200 OK and message with Flight booking confirming with packageId
         return ResponseEntity.ok("From flight supplier: flight booking confirmed with packageId: " + packageId);
 
     }
 
-    @GetMapping("/test")
+    @PostMapping("/test")
     public ResponseEntity<?> test() {
         return ResponseEntity.ok("SupplierFeedbackController is working");
     }
