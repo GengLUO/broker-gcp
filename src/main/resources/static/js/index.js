@@ -52,7 +52,7 @@ function setupAuth() {
 
   // Connect to local emulator when running on localhost
   if (location.hostname === "localhost") {
-//    connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+    // connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
     connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
 
