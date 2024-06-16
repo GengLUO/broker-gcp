@@ -96,9 +96,6 @@ function wireGuiUpEvents() {
         storeUserInfo(userCredential.user);
         return userCredential.user.getIdToken();
       })
-      .then((token) => {
-        showDashboard();
-      })
       .catch((error) => {
         console.error("Error during sign in:", error.message);
         alert(error.message);
@@ -122,9 +119,6 @@ function wireGuiUpEvents() {
 
         storeUserInfo(user);
         return user.getIdToken();
-      })
-      .then((token) => {
-        showDashboard();
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
