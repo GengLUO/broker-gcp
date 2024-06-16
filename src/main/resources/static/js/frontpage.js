@@ -33,13 +33,21 @@ const localFirebaseConfig = {
   authDomain: "localhost",
   projectId: "broker-da44b"
 };
+// Use local or production configuration based on the hostname
+const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
+
+// Initialize Firebase app
+const firebaseApp = initializeApp(firebaseConfig);
+const auth = getAuth(firebaseApp);
+const user = auth.currentUser;
+const firestore = getFirestore(firebaseApp);
 
 function setupAuth() {
-  const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
+  // const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
 
-  const firebaseApp = initializeApp(firebaseConfig);
-  const auth = getAuth(firebaseApp);
-  const firestore = getFirestore(firebaseApp);
+  // const firebaseApp = initializeApp(firebaseConfig);
+  // const auth = getAuth(firebaseApp);
+  // const firestore = getFirestore(firebaseApp);
 
   setPersistence(auth, browserSessionPersistence)
     .catch((error) => {
@@ -51,10 +59,13 @@ function setupAuth() {
     connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
 
+  // Save auth and db to global scope
   window.firebaseApp = firebaseApp;
   window.auth = auth;
   window.firestore = firestore;
+  window.user = user;
 
+  // Ensure any existing user is signed out
   try {
     auth.signOut();
   } catch (err) {
@@ -71,7 +82,7 @@ function wireUpAuthChange() {
   onAuthStateChanged(window.auth, (user) => {
     if (user) {
       user.getIdToken().then((token) => {
-//        fetchData(token);
+        fetchData(token);
         showDashboard();
       }).catch((error) => {
         console.error("Error getting ID token:", error);
@@ -94,24 +105,23 @@ function wireGuiUpEvents() {
         return signInWithEmailAndPassword(window.auth, email.value, password.value);
       })
       .then((userCredential) => {
-        storeUserInfo(userCredential.user);
+        storeUserInfo(userCredential.user); // Store user info
         return userCredential.user.getIdToken();
       })
-    .then((token) => {
-        createPackageWhenLoggedIn();
+    .then(async (token) => {
+        createPackageWhenLoggedIn(token);
       // Check the user's role and show the appropriate dashboard
-          return fetch('/api/whoami', {
-            headers: { Authorization: 'Bearer ' + token }
-          })
-              .then(response => response.json())
-              .then(user => {
-                if (user.role === 'manager') {
-                  showManagerDashboard();
-                }
-              else {
-            showDashboard();
-        }
-              });
+          const response = await fetch('/api/whoami', {
+        headers: { Authorization: 'Bearer ' + token }
+      });
+      // TODO: check 
+      const user = await response.json();
+      if (user.role === 'manager') {
+        showManagerDashboard();
+      }
+      else {
+        showDashboard();
+      }
 
         })
         .catch((error) => {
@@ -139,7 +149,7 @@ function wireGuiUpEvents() {
       })
       .then((token) => {
 //        fetchData(token);
-        createPackageWhenLoggedIn();
+        createPackageWhenLoggedIn(token);
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
@@ -166,7 +176,6 @@ function showUnAuthenticated() {
   document.getElementById("loginContent").style.display = "block";
   document.getElementById("dashboardContent").style.display = "none";
   document.getElementById("dashboardManagerContent").style.display = "none";
-
 }
 
 function showDashboard() {
@@ -178,7 +187,7 @@ function showDashboard() {
     addEventListeners(document.querySelector('.hotel-booking'));
 }
 
-function createPackageWhenLoggedIn() {
+function createPackageWhenLoggedIn(token) {
         const uid = sessionStorage.getItem('uid');
         const packageDetails = {
             packageId: "",
@@ -193,6 +202,7 @@ function createPackageWhenLoggedIn() {
         fetch('/api/travel/createPackage', {
             method: 'POST',
             headers: {
+                Authorization: 'Bearer ' + token,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(packageDetails)
@@ -208,7 +218,6 @@ function showManagerDashboard() {
   document.getElementById("loginContent").style.display = "none";
   document.getElementById("dashboardContent").style.display = "none";
   document.getElementById("dashboardManagerContent").style.display = "block";
-
 }
 
 function getHello(token) {
@@ -258,7 +267,7 @@ function setupDashboard() {
       onAuthStateChanged(auth, (user) => {
         if (user) {
           user.getIdToken().then((token) => {
-//            fetchData(token, user.uid);
+            // user is logged in
           }).catch((error) => {
             console.error("Error getting ID token:", error);
           });
@@ -276,6 +285,7 @@ async function sendData(url, data) {
   const response = await fetch(url, {
       method: 'POST',
       headers: {
+          Authorization: 'Bearer ' + token, 
           'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
@@ -359,6 +369,8 @@ async function confirmFlightBooking(event) {
   const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
   const customerName = flightBookingSection.querySelector('.passengerNames input').value;
 
+  const token = sessionStorage.getItem('token');
+
   const flightDetails = {
       packageId: packageId,
       userId: userId,
@@ -372,10 +384,11 @@ async function confirmFlightBooking(event) {
   document.getElementById('customerName').value = customerName;
 
   document.getElementById('confirmBooking').classList.remove('hidden');
-
+  
   const response = await fetch('/api/travel/addFlight', {
       method: 'POST',
       headers: {
+          Authorization: 'Bearer ' + token, 
           'Content-Type': 'application/json'
       },
       body: JSON.stringify(flightDetails)
@@ -421,6 +434,8 @@ async function confirmHotelBooking(event) {
   const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
   const numPeople = hotelBookingSection.querySelector('.numPeople').value;
 
+  const token = sessionStorage.getItem('token');
+
   const hotelDetails = {
       packageId: packageId,
       userId: userId,
@@ -436,6 +451,7 @@ async function confirmHotelBooking(event) {
   const response = await fetch('/api/travel/addHotel', {
       method: 'POST',
       headers: {
+          Authorization: 'Bearer ' + token,
           'Content-Type': 'application/json'
       },
       body: JSON.stringify(hotelDetails)
@@ -535,8 +551,11 @@ document.addEventListener('DOMContentLoaded', function () {
   const dataDisplay = document.getElementById('dataDisplay');
 
   getOrdersButton.addEventListener('click', function () {
-    fetch('/api/getAllOrders')
-        .then(response => {
+    fetch('/api/getAllOrders', {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    }).then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
           }
@@ -552,8 +571,11 @@ document.addEventListener('DOMContentLoaded', function () {
   });
 
   getCustomersButton.addEventListener('click', function () {
-    fetch('/api/getAllCustomers')
-        .then(response => {
+    fetch('/api/getAllCustomers', {
+      headers: {
+        'Authorization': 'Bearer ' + token
+      }
+    }).then(response => {
           if (!response.ok) {
             throw new Error('Network response was not ok');
           }

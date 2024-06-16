@@ -205,29 +205,29 @@ function addContent(text) {
   document.getElementById("contentdiv").innerHTML += (text + "<br/>");
 }
 
-document.getElementById("getAllOrdersBtn").addEventListener("click", function () {
-  console.log("button clicked");
-  const auth = getAuth();
-  console.log("getauth");
-  auth.currentUser.getIdToken(true).then(function(token) {
-    console.log("inside");
-    console.log(token);
-    fetch('/api/getAllOrders', {
-      method: 'GET', // You might need to adjust this depending on your API requirements
-      headers: {
-        'Authorization': 'Bearer ' + token
-      }
-    })
-    .then(response => response.text())
-    .then(data => {
-      console.log(data);
-    })
-    .catch(error => {
-      console.error('Error fetching orders:', error);
-      alert("Failed to fetch orders.");
-    });
-  }).catch(function(error) {
-    console.log('Error fetching token:', error);
-    alert("Authentication error. Please log in again.");
-  });
-});
+// document.getElementById("getAllOrdersBtn").addEventListener("click", function () {
+//   console.log("button clicked");
+//   const auth = getAuth();
+//   console.log("getauth");
+//   auth.currentUser.getIdToken(true).then(function(token) {
+//     console.log("inside");
+//     console.log(token);
+//     fetch('/api/getAllOrders', {
+//       method: 'GET', // You might need to adjust this depending on your API requirements
+//       headers: {
+//         'Authorization': 'Bearer ' + token
+//       }
+//     })
+//     .then(response => response.text())
+//     .then(data => {
+//       console.log(data);
+//     })
+//     .catch(error => {
+//       console.error('Error fetching orders:', error);
+//       alert("Failed to fetch orders.");
+//     });
+//   }).catch(function(error) {
+//     console.log('Error fetching token:', error);
+//     alert("Authentication error. Please log in again.");
+//   });
+// });
