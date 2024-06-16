@@ -86,34 +86,27 @@ public class TransactionCoordinatorService {
             bookingDetails.put("action", "PREPARE");
             String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
             if (flightMessageId == null) {
-                logger.error("Failed to publish flight-add-requests message");
-                // reutrn null to indicate messgae publish failure (could not be retried)
-                // return null;
+                logger.error("flight-add-requests messageId is null");
+                logger.error("message content: {}", bookingDetails);
             }
 
-            for (Map<String, Object> flight : flights) {
-                String flightId = (String) flight.get("flightId");
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "status", "pending");
-            }
+            // add to the extracted packageSnapshot with a new attribute of flight status being pending
+            transaction.update(packageRef, "flightConfirmStatus", false);
 
             String hotelMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
             if (hotelMessageId == null) {
-                logger.error("Failed to publish hotel-add-requests message");
-                // reutrn null to indicate messgae publish failure (could not be retried)
-                // return null;
+                logger.error("hotel-add-requests messageId is null");
+                logger.error("message content: {}", bookingDetails);
             }
-            for (Map<String, Object> hotel : hotels) {
-                String hotelId = (String) hotel.get("hotelId");
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "status", "pending");
-            }
+
+            // add to the extracted packageSnapshot with a new attribute of hotel status being pending
+            transaction.update(packageRef, "hotelConfirmStatus", false);
 
             String userId = (String) bookingDetails.get("userId");
             DocumentReference userRef = db.collection("users").document(userId).collection("travelPackages").document(packageId);
             transaction.set(userRef, bookingDetails);
 
-            return "Travel Package " + packageId + " booked successfully.";
+            return "Travel Package " + packageId + " initated booking successfully.";
         });
     }
 
@@ -123,6 +116,9 @@ public class TransactionCoordinatorService {
         return db.runTransaction((Transaction.Function<String>) transaction -> {
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
             DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+
+            // log the packageSnapshot
+            logger.info("Checking booking confirmation for package: id: {}", packageId);
 
             if (bookedTypeString.equals("flight")) {
                 transaction.update(packageRef, "flightConfirmStatus", true);
@@ -148,7 +144,7 @@ public class TransactionCoordinatorService {
             } else {
                 logger.info("Booking confirmation not yet complete for package: {}", packageId);
             }
-            return "Transaction completed";
+            return "Booking confirmation status transaction completed";
         });
     }
 
@@ -158,42 +154,21 @@ public class TransactionCoordinatorService {
 
         return db.runTransaction(transaction -> {
             logger.info("Confirming travel package with packageId: {}", packageId);
-            DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-            DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
-
-            if (!packageSnapshot.exists()) {
-                throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
-            }
-
-            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
-            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
 
             // Commit Phase 
+
             // update the action attribute in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "COMMIT");
             String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
             if (flightMessageId == null) {
-                logger.error("Failed to publish flight-booking-requests message");
-                // reutrn null to indicate message failure (could not be retried)
-                return null;
-            }
-            for (Map<String, Object> flight : flights) {
-                String flightId = (String) flight.get("flightId");
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "status", "committed");
+                logger.error("flight-booking-requests messageId is null");
+                logger.error("message content: {}", bookingDetails);
             }
 
             String hoteltMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
             if (hoteltMessageId == null) {
-                logger.error("Failed to publish flight-booking-requests message");
-                // reutrn null to indicate message failure (could not be retried)
-                return null;
-            }
-            for (Map<String, Object> hotel : hotels) {
-                String hotelId = (String) hotel.get("hotelId");
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
-                transaction.update(hotelRef, "status", "committed");
+                logger.error(" hotel-booking-requests messageId is null");
+                logger.error("message content: {}", bookingDetails);
             }
 
             return "Travel Package " + packageId + " confirmed successfully.";
@@ -219,24 +194,36 @@ public class TransactionCoordinatorService {
             // update the action attribute in the bookingDetails to indicate the action and publish the message
             Map<String, Object> bookingDetails = packageSnapshot.getData();
             bookingDetails.put("action", "ABORT");
-            String flightMessageId = brokerService.publishMessage("flight-cancel-request", packageSnapshot.getData());
+            String flightMessageId = brokerService.publishMessage("flight-cancel-request", bookingDetails);
             if (flightMessageId == null) {
-                logger.error("Failed to publish flight-cancel-requests message");
+                logger.error("flight-cancel-requests messageId is null");
+                logger.error("message content: {}", bookingDetails);
             }
-            for (Map<String, Object> flight : flights) {
-                String flightId = (String) flight.get("flightId");
-                DocumentReference flightRef = db.collection("flights").document(flightId);
-                transaction.update(flightRef, "status", "cancel");
+
+            transaction.update(packageRef, "flightConfirmStatus", false);
+            // set the number of seats booked in the flights to zero
+            if (flights != null) {
+                for (Map<String, Object> flight : flights) {
+                    String flightId = (String) flight.get("flightId");
+                    DocumentReference flightRef = db.collection("flights").document(flightId);
+                    transaction.update(flightRef, "seatsBooked", 0);
+                }
             }
-            String hotelMessageId = brokerService.publishMessage("hotel-cancel-request", packageSnapshot.getData());
+
+            String hotelMessageId = brokerService.publishMessage("hotel-cancel-request", bookingDetails);
             if (hotelMessageId == null) {
-                logger.error("Failed to publish flight-cancel-requests message");
+                logger.error("flight-cancel-requests message is null");
+                logger.error("message content: {}", bookingDetails);
             }
-            for (Map<String, Object> hotel : hotels) {
-                String hotelId = (String) hotel.get("hotelId");
-                DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                transaction.update(hotelRef, "bookedRooms", FieldValue.increment(-(Integer) hotel.get("roomsBooked")));
-                transaction.update(hotelRef, "status", "cancel");
+
+            transaction.update(packageRef, "hotelConfirmStatus", false);
+            // aet the number of rooms booked in the hotels to zero
+            if (hotels != null) {
+                for (Map<String, Object> hotel : hotels) {
+                    String hotelId = (String) hotel.get("hotelId");
+                    DocumentReference hotelRef = db.collection("hotels").document(hotelId);
+                    transaction.update(hotelRef, "roomsBooked", 0);
+                }
             }
             return "Travel Package " + packageId + " cancelled successfully.";
         });

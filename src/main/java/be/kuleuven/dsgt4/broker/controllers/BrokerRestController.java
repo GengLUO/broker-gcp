@@ -18,12 +18,9 @@ import com.google.api.core.ApiFutureCallback;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.UUID;
-import java.util.concurrent.ArrayBlockingQueue;
-import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
-import java.util.concurrent.TimeUnit;
+
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.
      * Before Booking:
@@ -182,58 +179,55 @@ public class BrokerRestController {
             public void onFailure(Throwable t) {
                 ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
             }
-
+    
             @Override
-            public void onSuccess(String messageId) {
-                EntityModel<String> resource = bookingToEntityModel(packageId, bookingDetails.toString());
+            public void onSuccess(String message) {
+                EntityModel<String> resource = bookingToEntityModel(packageId, message);
                 ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
                         .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
             }
         }, Runnable::run);
-        return ResponseEntity.ok("Booking process initiated package ID: " + packageId);
+        return ResponseEntity.ok("Booking process initiated for package ID: " + packageId);
     }
+    
 
     // Booking Methods: 2PC transaction execution (check the confirmation of flight and hotel booking)
     @PostMapping("/packages/{packageId}/confirmFlight")
-    public ResponseEntity<String> confirmFlightBooking(@RequestBody String packageId) {
-        try {
-            ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "flight");
-            ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
-                @Override
-                public void onFailure(Throwable t) {
-                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing flight booking confirmation: " + t.getMessage());
-                }
+    public ResponseEntity<?> confirmFlightBooking(@RequestBody String packageId) {
+        ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "flight");
+        ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+            @Override
+            public void onFailure(Throwable t) {
+                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing flight booking confirmation: " + t.getMessage());
+            }
 
-                @Override
-                public void onSuccess(String message) {
-                    ResponseEntity.ok("Flight booking confirmed for package ID: " + packageId);
-                }
-            }, executor);
-            return ResponseEntity.ok("Flight booking confirmed for package ID: " + packageId);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to confirm flight booking: " + e.getMessage());
-        }
+            @Override
+            public void onSuccess(String message) {
+                EntityModel<String> resource = bookingToEntityModel(packageId, message);
+                ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
+                        .bookTravelPackage(packageId, new HashMap<>())).toUri()).body(resource);
+            }
+        }, Runnable::run);
+        return ResponseEntity.ok("Flight booking confirmed for package ID: " + packageId);
     }
 
     @PostMapping("/packages/{packageId}/confirmHotel")
     public ResponseEntity<String> confirmHotelBooking(@RequestBody String packageId) {
-        try {
-            ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "hotel");
-            ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
-                @Override
-                public void onFailure(Throwable t) {
-                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing hotel booking confirmation: " + t.getMessage());
-                }
+        ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "hotel");
+        ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+            @Override
+            public void onFailure(Throwable t) {
+                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing hotel booking confirmation: " + t.getMessage());
+            }
 
-                @Override
-                public void onSuccess(String message) {
-                    ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
-                }
-            }, executor);
-            return ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to confirm hotel booking: " + e.getMessage());
-        }
+            @Override
+            public void onSuccess(String message) {
+                EntityModel<String> resource = bookingToEntityModel(packageId, message);
+                ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
+                        .bookTravelPackage(packageId, new HashMap<>())).toUri()).body(resource);
+            }
+        }, Runnable::run);
+        return ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
     }
 
     // Booking Methods: 2PC transaction execution

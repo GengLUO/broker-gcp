@@ -7,10 +7,14 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseBody;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Controller
 @RequestMapping("/feedback")
 public class SupplierFeedbackController {
+    
+    private static final Logger logger = LoggerFactory.getLogger(SupplierFeedbackController.class);
 
     private final BrokerRestController brokerRestController;
 
@@ -22,6 +26,7 @@ public class SupplierFeedbackController {
     @ResponseBody
     public ResponseEntity<?> confirmHotel(@RequestBody String packageId) {
         brokerRestController.confirmHotelBooking(packageId);
+        logger.info("passing hotel confirmed info packageId to boroker rest controller: " + packageId);
         // set response status to 200 OK and message with Hotel booking confirming with packageId
         return ResponseEntity.ok("From hotel supplier: hotel booking confirmed with packageId: " + packageId);
     }
@@ -30,6 +35,7 @@ public class SupplierFeedbackController {
     @ResponseBody
     public ResponseEntity<?> confirmFlight(@RequestBody String packageId) {
         brokerRestController.confirmFlightBooking(packageId);
+        logger.info("passing flight confirmed info packageId to boroker rest controller: " + packageId);
         // set response status to 200 OK and message with Flight booking confirming with packageId
         return ResponseEntity.ok("From flight supplier: flight booking confirmed with packageId: " + packageId);
 
