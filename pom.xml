@@ -25,12 +25,6 @@
 	
 	<dependencyManagement>
         <dependencies>
-<!--			<dependency>-->
-<!--				<groupId>org.++++meleaf</groupId>-->
-<!--				<artifactId>thymeleaf-spring5</artifactId>-->
-<!--				<version>3.0.12.RELEASE</version>-->
-<!--			</dependency>-->
-			<!-- Thymeleaf Layout Dialect (Optional) -->
 
 			<dependency>
 				<groupId>nz.net.ultraq.thymeleaf</groupId>
