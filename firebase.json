@@ -19,7 +19,10 @@
     "database": {
       "port": 9000
     },
-    "singleProjectMode": true
+    "singleProjectMode": true,
+    "hosting": {
+      "port": 5002
+    }
   },
   "firestore": {
     "rules": "firestore.rules",
