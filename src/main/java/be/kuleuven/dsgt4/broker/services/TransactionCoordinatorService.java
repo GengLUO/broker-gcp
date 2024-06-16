@@ -106,7 +106,7 @@ public class TransactionCoordinatorService {
             return "Travel Package " + packageId + " booked successfully.";
         });
     }
-    
+
     // 2. Commit Phase of the 2PC Booking (Confirm Booking)
     public ApiFuture<String> confirmTravelPackage(String packageId, Map<String, Object> bookingDetails) {
         Firestore db = firestore;
@@ -184,12 +184,12 @@ public class TransactionCoordinatorService {
 
     // Methods for Before Booking
     public void addFlightToPackage(String userId, String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
-        Firestore db = firestore;
-        db.runTransaction(transaction -> {
-           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-           transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
-               return null;
-        }).get();
+//        Firestore db = firestore;
+//        db.runTransaction(transaction -> {
+//           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
+//           transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
+//               return null;
+//        }).get();
     }
 
     public void removeFlightFromPackage(String userId, String packageId, String flightId) throws ExecutionException, InterruptedException {
@@ -291,79 +291,4 @@ public class TransactionCoordinatorService {
     private String generatePackageId() {
         return "package-" + System.currentTimeMillis();
     }
-
-        // public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
-    //     Firestore db = firestore;
-
-    //     return db.runTransaction(transaction -> {
-    //         logger.info("Booking travel package with packageId: {}", packageId);
-    //         DocumentReference packageRef = db.collection("travelPackages").document(packageId);
-    //         DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
-
-    //         if (!packageSnapshot.exists()) {
-    //             throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
-    //         }
-
-    //         List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
-    //         List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
-
-    //         // Print flights
-    //         if (flights != null) {
-    //             System.out.println("Flights:");
-    //             for (Map<String, Object> flight : flights) {
-    //                 System.out.println(flight);
-    //             }
-    //         } else {
-    //             System.out.println("flights is Null.");
-    //         }
-
-    //         // Print hotels
-    //         if (hotels != null) {
-    //             System.out.println("Hotels:");
-    //             for (Map<String, Object> hotel : hotels) {
-    //                 System.out.println(hotel);
-    //             }
-    //         } else {
-    //             System.out.println("hotels is Null.");
-    //         }
-
-    //         // Prepare Phase
-    //         brokerService.publishMessage("flight-add-requests", bookingDetails);
-    //         for (Map<String, Object> flight : flights) {
-    //             String flightId = (String) flight.get("flightId");
-    //             DocumentReference flightRef = db.collection("flights").document(flightId);
-    //             transaction.update(flightRef, "status", "prepared");
-    //         }
-    //         brokerService.publishMessage("hotel-add-requests", bookingDetails);
-    //         for (Map<String, Object> hotel : hotels) {
-    //             String hotelId = (String) hotel.get("hotelId");
-    //             DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-    //             transaction.update(hotelRef, "status", "prepared");
-    //         }
-            
-    //         // Commit Phase
-    //         brokerService.publishMessage("flight-booking-requests", bookingDetails);
-    //         for (Map<String, Object> flight : flights) {
-    //             String flightId = (String) flight.get("flightId");
-    //             DocumentReference flightRef = db.collection("flights").document(flightId);
-    //             transaction.update(flightRef, "status", "committed");
-    //         }
-
-    //         brokerService.publishMessage("hotel-booking-requests", bookingDetails);
-    //         for (Map<String, Object> hotel : hotels) {
-    //             String hotelId = (String) hotel.get("hotelId");
-    //             DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-    //             transaction.update(hotelRef, "bookedRooms", FieldValue.increment((Integer) bookingDetails.get("roomsBooked")));
-    //             transaction.update(hotelRef, "status", "committed");
-    //         }
-
-    //         // both servers responded with success -> commit the transaction
-    //         String userId = (String) bookingDetails.get("userId");
-    //         DocumentReference userRef = db.collection("users").document(userId).collection("travelPackages").document(packageId);
-    //         transaction.set(userRef, bookingDetails);
-
-    //         return "Travel Package " + packageId + " booked successfully.";
-    //     });
-    // }
-
 }

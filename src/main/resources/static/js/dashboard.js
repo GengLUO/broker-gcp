@@ -6,15 +6,15 @@ import {
     signInWithCustomToken
   } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
   import { connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
-  
+
   function setupDashboard() {
     const auth = window.auth;
     const firestore = window.firestore;
-  
+
     if (location.hostname === "localhost") {
       connectFirestoreEmulator(firestore, 'localhost', 8084);
     }
-  
+
     setPersistence(auth, browserSessionPersistence)
       .then(() => {
         onAuthStateChanged(auth, (user) => {
@@ -34,14 +34,14 @@ import {
         console.error("Error setting persistence:", error);
       });
   }
-  
+
   // Call the setup function when the page loads
   window.onload = setupDashboard;
-  
+
   document.addEventListener('DOMContentLoaded', () => {
     const uid = sessionStorage.getItem('uid');
     // print user id
-    console.log("Dashboard JS createPackage: user id: " + uid);
+    console.log("Dashboard JS user id: " + uid);
 
     const packageDetails = {
       packageId: "",
@@ -69,7 +69,7 @@ import {
     addEventListeners(document.querySelector('.flight-booking'));
     addEventListeners(document.querySelector('.hotel-booking'));
   });
-  
+
   async function sendData(url, data) {
     const response = await fetch(url, {
         method: 'POST',
@@ -87,7 +87,7 @@ import {
         return await response.text();
     }
 }
-  
+
   function addEventListeners(section) {
     section.querySelector('.confirmFlightDetails')?.addEventListener('click', showFlights);
     section.querySelector('.confirmFlightSelection')?.addEventListener('click', showPassengerDetails);
@@ -96,7 +96,7 @@ import {
     section.querySelector('.confirmHotelDetails')?.addEventListener('click', showHotels);
     section.querySelector('.confirmHotelSelection')?.addEventListener('click', confirmHotelBooking);
 }
-  
+
   /*********************************************************************************************************/
 
   function showFlights(event) {
@@ -105,7 +105,7 @@ import {
     const destination = flightBookingSection.querySelector('.destination').value;
     const flightOptions = flightBookingSection.querySelector('.flightOptions');
     const flightsList = flightBookingSection.querySelector('.flightsList');
-  
+
     if (date && destination) {
       flightOptions.classList.remove('hidden');
       flightsList.innerHTML = `
@@ -124,25 +124,25 @@ import {
       `;
     }
   }
-  
+
   /*********************************************************************************************************/
 
   function showPassengerDetails(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
     const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked');
     const passengerDetails = flightBookingSection.querySelector('.passengerDetails');
-  
+
     if (selectedFlight) {
       passengerDetails.classList.remove('hidden');
     }
   }
-  
+
   function showPassengerFields(event) {
     const flightBookingSection = event.target.closest('.flight-booking');
     const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
     const passengerNames = flightBookingSection.querySelector('.passengerNames');
     passengerNames.innerHTML = '';
-  
+
     for (let i = 1; i <= numPassengers; i++) {
       passengerNames.innerHTML += `
         <div class="mb-4">
@@ -152,7 +152,7 @@ import {
       `;
     }
   }
-  
+
   /*********************************************************************************************************/
   async function confirmFlightBooking(event) {
     const packageId = document.getElementById('packageId').value;
@@ -161,7 +161,7 @@ import {
     const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
     const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
     const customerName = flightBookingSection.querySelector('.passengerNames input').value; // Assuming the first passenger's name is the customer's name
-  
+
     const flightDetails = {
         packageId: packageId,
         userId: userId,
@@ -173,7 +173,7 @@ import {
     document.getElementById('flightId').value = selectedFlight;
     document.getElementById('seatsBooked').value = numPassengers;
     document.getElementById('customerName').value = customerName;
-  
+
     document.getElementById('confirmBooking').classList.remove('hidden');
 
     // Post the flightDetails to the server
@@ -192,7 +192,7 @@ import {
         console.log('confirm Flight Booking Success:', response);
     }
 }
-  
+
 /*********************************************************************************************************/
 
 function showHotels(event) {
