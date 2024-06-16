@@ -10,7 +10,8 @@ import reactor.core.publisher.Mono;
 public class TransactionService {
     private final WebClient webClient;
     //    TODO: change the endpoint
-    private static final String CONFIRM_ENDPOINT = "https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel";
+//    https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel
+    private static final String CONFIRM_ENDPOINT = "https://jsonplaceholder.typicode.com/posts";
 
     @Autowired
     public TransactionService(WebClient.Builder webClientBuilder) {
