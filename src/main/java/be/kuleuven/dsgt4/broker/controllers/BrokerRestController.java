@@ -21,6 +21,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.BlockingQueue;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.
@@ -45,11 +47,6 @@ import java.util.concurrent.TimeUnit;
      * - updateFlightInTravelPackage: Update the flight in the travel package.
      * - updateHotelInTravelPackage: Update the hotel in the travel package.
      * - updateCustomerInTravelPackage: Update the customer in the travel package.
-     * Pub/Sub Push:
-     * Methods to handle Pub/Sub push messages from the suppliers.
-     * Relevant Methods:
-     * - handleHotelPubSubPush: Handle a push message from the hotel supplier.
-     * - handleFlightPubSubPush: Handle a push message from the flight supplier.
      */
 @RestController
 @RequestMapping("/api/bookings")
@@ -57,6 +54,7 @@ public class BrokerRestController {
 
     private final BrokerService brokerService;
     private final TransactionCoordinatorService transactionCoordinatorService;
+    private static final Executor executor = Executors.newCachedThreadPool();
 
     @Autowired
     public BrokerRestController(BrokerService brokerService, TransactionCoordinatorService transactionCoordinatorService) {
@@ -92,12 +90,13 @@ public class BrokerRestController {
     }
 
     // Before Booking Methods
-    @PostMapping("/{userId}/packages")
-    public ResponseEntity<?> createTravelPackage(@PathVariable String userId, @RequestBody Map<String, Object> packageDetails) {
+    @PostMapping("/packages")
+    public ResponseEntity<?> createTravelPackage(@RequestBody Map<String, Object> packageDetails) {
         try {
+            String userId = (String) packageDetails.get("userId");
             TravelPackage travelPackage = transactionCoordinatorService.createTravelPackage(userId);
             packageDetails.put("packageId", travelPackage.getPackageId());
-            packageDetails.put("userId", userId);
+            // packageDetails.put("userId", userId);
 
             // Include packageId in the resource
             EntityModel<Map<String, String>> resource = EntityModel.of(
@@ -105,7 +104,7 @@ public class BrokerRestController {
                             "message", "Travel package created successfully.",
                             "packageId", travelPackage.getPackageId()
                     ),
-                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(userId, packageDetails)).withSelfRel()
+                    WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(packageDetails)).withSelfRel()
             );
 
             return ResponseEntity.status(HttpStatus.CREATED).body(resource);
@@ -114,7 +113,7 @@ public class BrokerRestController {
         }
     }
 
-    @PostMapping("/{userId}/packages/{packageId}/flights")
+    @PostMapping("/packages/{packageId}/flights")
     public ResponseEntity<?> addFlightToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
             transactionCoordinatorService.addFlightToPackage(userId, packageId, flightDetails);
@@ -124,7 +123,7 @@ public class BrokerRestController {
         }
     }
 
-    @DeleteMapping("/{userId}/packages/{packageId}/flights/{flightId}")
+    @DeleteMapping("/packages/{packageId}/flights/{flightId}")
     public ResponseEntity<?> removeFlightFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String flightId) {
         try {
             transactionCoordinatorService.removeFlightFromPackage(userId, packageId, flightId);
@@ -134,7 +133,7 @@ public class BrokerRestController {
         }
     }
 
-    @PostMapping("/{userId}/packages/{packageId}/hotels")
+    @PostMapping("/packages/{packageId}/hotels")
     public ResponseEntity<?> addHotelToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
         try {
             transactionCoordinatorService.addHotelToPackage(userId, packageId, hotelDetails);
@@ -144,7 +143,7 @@ public class BrokerRestController {
         }
     }
 
-    @DeleteMapping("/{userId}/packages/{packageId}/hotels/{hotelId}")
+    @DeleteMapping("/packages/{packageId}/hotels/{hotelId}")
     public ResponseEntity<?> removeHotelFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String hotelId) {
         try {
             transactionCoordinatorService.removeHotelFromPackage(userId, packageId, hotelId);
@@ -154,7 +153,7 @@ public class BrokerRestController {
         }
     }
 
-    @PostMapping("/{userId}/packages/{packageId}/customers")
+    @PostMapping("/packages/{packageId}/customers")
     public ResponseEntity<?> addCustomerToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
         try {
             transactionCoordinatorService.addCustomerToPackage(userId, packageId, customerDetails);
@@ -164,7 +163,7 @@ public class BrokerRestController {
         }
     }
 
-    @DeleteMapping("/{userId}/packages/{packageId}/customers/{customerId}")
+    @DeleteMapping("/packages/{packageId}/customers/{customerId}")
     public ResponseEntity<?> removeCustomerFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String customerId) {
         try {
             transactionCoordinatorService.removeCustomerFromPackage(userId, packageId, customerId);
@@ -175,7 +174,7 @@ public class BrokerRestController {
     }
 
     // Booking Methods: 2PC transaction preparation
-    @PostMapping("/{userId}/packages/{packageId}/book")
+    @PostMapping("/packages/{packageId}/book")
     public ResponseEntity<?> bookTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
         ApiFuture<String> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
         ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
@@ -194,8 +193,51 @@ public class BrokerRestController {
         return ResponseEntity.ok("Booking process initiated for user ID: " + userId + " and package ID: " + packageId);
     }
 
+    // Booking Methods: 2PC transaction execution (check the confirmation of flight and hotel booking)
+    @PostMapping("/packages/{packageId}/confirmFlight")
+    public ResponseEntity<String> confirmFlightBooking(@RequestBody String packageId) {
+        try {
+            ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "flight");
+            ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+                @Override
+                public void onFailure(Throwable t) {
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing flight booking confirmation: " + t.getMessage());
+                }
+
+                @Override
+                public void onSuccess(String message) {
+                    ResponseEntity.ok("Flight booking confirmed for package ID: " + packageId);
+                }
+            }, executor);
+            return ResponseEntity.ok("Flight booking confirmed for package ID: " + packageId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to confirm flight booking: " + e.getMessage());
+        }
+    }
+
+    @PostMapping("/packages/{packageId}/confirmHotel")
+    public ResponseEntity<String> confirmHotelBooking(@RequestBody String packageId) {
+        try {
+            ApiFuture<String> result = transactionCoordinatorService.checkBookingConfirmation(packageId, "hotel");
+            ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
+                @Override
+                public void onFailure(Throwable t) {
+                    ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing hotel booking confirmation: " + t.getMessage());
+                }
+
+                @Override
+                public void onSuccess(String message) {
+                    ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
+                }
+            }, executor);
+            return ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
+        } catch (Exception e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to confirm hotel booking: " + e.getMessage());
+        }
+    }
+
     // Booking Methods: 2PC transaction execution
-    @PostMapping("/{userId}/packages/{packageId}/confirm")
+    @PostMapping("/packages/{packageId}/confirm")
     public ResponseEntity<String> confrimTravelPackageBooking(@RequestBody Map<String, Object> bookingDetails) {
         String packageId = (String) bookingDetails.get("packageId");
         ApiFuture<String> result = transactionCoordinatorService.confirmTravelPackage(packageId, bookingDetails);
@@ -213,8 +255,9 @@ public class BrokerRestController {
         return ResponseEntity.ok("Booking confirmation process initiated for package ID: " + packageId);
     }
 
+
     // Booking Methods: 2PC transaction execution (abort)
-    @DeleteMapping("/{userId}/packages/{packageId}/cancel")
+    @DeleteMapping("/packages/{packageId}/cancel")
     public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
         ApiFuture<String> result = transactionCoordinatorService.cancelTravelPackage(userId, packageId);
         ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
@@ -232,7 +275,7 @@ public class BrokerRestController {
     }
 
     // After Booking Methods
-    @PutMapping("/{userId}/packages/{packageId}/flights")
+    @PutMapping("/packages/{packageId}/flights")
     public ResponseEntity<?> updateFlightInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> flightDetails) {
         try {
             transactionCoordinatorService.updateFlightInPackage(userId, packageId, flightDetails);
@@ -242,7 +285,7 @@ public class BrokerRestController {
         }
     }
 
-    @PutMapping("/{userId}/packages/{packageId}/hotels")
+    @PutMapping("/packages/{packageId}/hotels")
     public ResponseEntity<?> updateHotelInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> hotelDetails) {
         try {
             transactionCoordinatorService.updateHotelInPackage(userId, packageId, hotelDetails);
@@ -252,7 +295,7 @@ public class BrokerRestController {
         }
     }
 
-    @PutMapping("/{userId}/packages/{packageId}/customers")
+    @PutMapping("/packages/{packageId}/customers")
     public ResponseEntity<?> updateCustomerInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> customerDetails) {
         try {
             transactionCoordinatorService.updateCustomerInPackage(userId, packageId, customerDetails);
@@ -265,7 +308,7 @@ public class BrokerRestController {
     private EntityModel<String> bookingToEntityModel(String userId, String packageId, String message) {
         return EntityModel.of(message,
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).bookTravelPackage(userId, packageId, new HashMap<>())).withSelfRel(),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(userId, new HashMap<>())).withRel("create-package"),
+                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).createTravelPackage(new HashMap<>())).withRel("create-package"),
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).cancelTravelPackage(userId, packageId)).withRel("cancel-package"),
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).addFlightToTravelPackage(userId, packageId, new HashMap<>())).withRel("add-flight"),
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).removeFlightFromTravelPackage(userId, packageId, "")).withRel("remove-flight"),
@@ -278,263 +321,4 @@ public class BrokerRestController {
                 WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class).updateCustomerInTravelPackage(userId, packageId, new HashMap<>())).withRel("update-customer")
         );
     }
-
-    /*******************new methods******************/
-//    @GetMapping("/flights")
-//    public ResponseEntity<?> getFlights() {
-//        try {
-//            Map<String, Object> message = new HashMap<>();
-//            message.put("type", "flight-info-requests");
-//            message.put("action", "getAllFlights");
-//            String correlationId = UUID.randomUUID().toString();
-//            message.put("correlationId", correlationId);
-//
-//            // Publish request message
-//            brokerService.publishMessage("flight-info-requests", message);
-//
-//            // Wait for the response (using a blocking queue for simplicity)
-//            BlockingQueue<String> responseQueue = new ArrayBlockingQueue<>(1);
-//            brokerService.subscribeToResponse(correlationId, responseQueue);
-//
-//            // Get the response
-//            String flightsJson = responseQueue.poll(30, TimeUnit.SECONDS); // Wait for 30 seconds
-//
-//            if (flightsJson == null) {
-//                return ResponseEntity.status(HttpStatus.REQUEST_TIMEOUT).body("No response received for flight info request.");
-//            }
-//
-//            return ResponseEntity.ok(flightsJson);
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to get flights: " + e.getMessage());
-//        }
-//    }
-
-//    @GetMapping("/flights")
-//    public ResponseEntity<?> getFlights() {
-//        try {
-//            Map<String, Object> message = new HashMap<>();
-//            message.put("type", "flight-info-requests");
-//            message.put("action", "getAllFlights");
-//
-//            String messageId = brokerService.publishMessage("flight-info-requests", message);
-//            return ResponseEntity.ok("Request to get all flights has been published. Message ID: " + messageId);
-//        } catch (Exception e) {
-//            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish message to get flights: " + e.getMessage());
-//        }
-//    }
 }
-
-/**
-package be.kuleuven.dsgt4.broker.controllers;
-
-import be.kuleuven.dsgt4.broker.domain.ItemType;
-import be.kuleuven.dsgt4.broker.domain.TravelPackage;
-import be.kuleuven.dsgt4.broker.services.BrokerPublisherService;
-import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.hateoas.EntityModel;
-import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-import java.util.Map;
-import java.io.IOException;
-import java.util.HashMap;
-import java.util.concurrent.ExecutionException;
-
-@RestController
-@RequestMapping("/bookings")
-public class BookingController {
-
-    private final BrokerPublisherService publisherService;
-    private final TransactionCoordinatorService transactionCoordinatorService;
-
-    @Autowired
-    public BookingController(BrokerPublisherService publisherService, TransactionCoordinatorService transactionCoordinatorService) {
-        this.publisherService = publisherService;
-        this.transactionCoordinatorService = transactionCoordinatorService;
-    }
-
-    @GetMapping("/test-publish/{topic}")
-    public ResponseEntity<?> testPublish(@PathVariable String topic) {
-        try {
-            Map<String, Object> testMessage = new HashMap<>();
-            testMessage.put("type", "test");
-            testMessage.put("message", "Test message");
-            String messageId = publisherService.publishMessage(topic, testMessage);
-            return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/hotels")
-    public ResponseEntity<?> getHotels() {
-        try {
-            String hotels = publisherService.getHotels();
-            return ResponseEntity.ok(hotels);
-        } catch (IOException | ExecutionException | InterruptedException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve hotels: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/hotels/{id}")
-    public ResponseEntity<?> getHotel(@PathVariable String id) {
-        try {
-            String hotel = publisherService.getHotel(id);
-            return ResponseEntity.ok(hotel);
-        } catch (IOException | ExecutionException | InterruptedException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve hotel: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/flights")
-    public ResponseEntity<?> getFlights() {
-        try {
-            String flights = publisherService.getFlights();
-            return ResponseEntity.ok(flights);
-        } catch (IOException | ExecutionException | InterruptedException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve flights: " + e.getMessage());
-        }
-    }
-
-    @GetMapping("/flights/{id}")
-    public ResponseEntity<?> getFlight(@PathVariable String id) {
-        try {
-            String flight = publisherService.getFlight(id);
-            return ResponseEntity.ok(flight);
-        } catch (IOException | ExecutionException | InterruptedException e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to retrieve flight: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/{userId}/packages")
-    public ResponseEntity<?> createTravelPackage(@PathVariable String userId) {
-        TravelPackage travelPackage = publisherService.createTravelPackage(userId);
-        EntityModel<String> resource = bookingToEntityModel(userId, travelPackage.getPackageId(), "Travel package created successfully.");
-        return ResponseEntity.status(HttpStatus.CREATED).body(resource);
-    }
-
-    @PostMapping("/{userId}/packages/{packageId}/flights")
-    public ResponseEntity<?> addFlightToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody String flightJson) {
-        TravelPackage travelPackage = publisherService.getTravelPackage(userId, packageId);
-        if (travelPackage == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Travel package not found for user ID: " + userId + " and package ID: " + packageId);
-        }
-        publisherService.addFlightToTravelPackage(travelPackage, flightJson);
-        return ResponseEntity.ok("Flight added to travel package for user ID: " + userId + " and package ID: " + packageId);
-    }
-
-    @DeleteMapping("/{userId}/packages/{packageId}/flights")
-    public ResponseEntity<?> removeFlightFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody String flightJson) {
-        TravelPackage travelPackage = publisherService.getTravelPackage(userId, packageId);
-        if (travelPackage == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Travel package not found for user ID: " + userId + " and package ID: " + packageId);
-        }
-        publisherService.removeFlightFromTravelPackage(travelPackage, flightJson);
-        return ResponseEntity.ok("Flight removed from travel package for user ID: " + userId + " and package ID: " + packageId);
-    }
-
-    @PostMapping("/{userId}/packages/{packageId}/hotels")
-    public ResponseEntity<?> addHotelToTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody String hotelJson) {
-        TravelPackage travelPackage = publisherService.getTravelPackage(userId, packageId);
-        if (travelPackage == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Travel package not found for user ID: " + userId + " and package ID: " + packageId);
-        }
-        publisherService.addHotelToTravelPackage(travelPackage, hotelJson);
-        return ResponseEntity.ok("Hotel added to travel package for user ID: " + userId + " and package ID: " + packageId);
-    }
-
-    @DeleteMapping("/{userId}/packages/{packageId}/hotels")
-    public ResponseEntity<?> removeHotelFromTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody String hotelJson) {
-        TravelPackage travelPackage = publisherService.getTravelPackage(userId, packageId);
-        if (travelPackage == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Travel package not found for user ID: " + userId + " and package ID: " + packageId);
-        }
-        publisherService.removeHotelFromTravelPackage(travelPackage, hotelJson);
-        return ResponseEntity.ok("Hotel removed from travel package for user ID: " + userId + " and package ID: " + packageId);
-    }
-
-    @PostMapping("/{userId}/packages/{packageId}/book/hotels")
-    public ResponseEntity<?> createHotelBooking(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
-        try {
-            String messageId = publisherService.publishMessage("hotel-booking-requests", bookingDetails);
-            EntityModel<String> resource = bookingToEntityModel(userId, packageId, bookingDetails.toString());
-            return ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class)
-                    .createHotelBooking(userId, packageId, bookingDetails)).toUri()).body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing hotel booking: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/{userId}/packages/{packageId}/book/flights")
-    public ResponseEntity<?> createFlightBooking(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
-        try {
-            String messageId = publisherService.publishMessage("flight-booking-requests", bookingDetails);
-            EntityModel<String> resource = bookingToEntityModel(userId, packageId, bookingDetails.toString());
-            return ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class)
-                    .createFlightBooking(userId, packageId, bookingDetails)).toUri()).body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing flight booking: " + e.getMessage());
-        }
-    }
-
-    @PostMapping("/{userId}/packages/{packageId}/book")
-    public ResponseEntity<?> bookTravelPackage(@PathVariable String userId, @PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
-        try {
-            String messageId = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails).get();
-            EntityModel<String> resource = bookingToEntityModel(userId, packageId, bookingDetails.toString());
-            return ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class)
-                    .bookTravelPackage(userId, packageId, bookingDetails)).toUri()).body(resource);
-        } catch (Exception e) {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + e.getMessage());
-        }
-    }
-
-    @DeleteMapping("/{userId}/packages/{packageId}")
-    public ResponseEntity<?> cancelTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
-        boolean success = publisherService.cancelTravelPackage(userId, packageId);
-        if (success) {
-            return ResponseEntity.ok("Travel package cancelled for user ID: " + userId + " and package ID: " + packageId);
-        } else {
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to cancel travel package for user ID: " + userId + " and package ID: " + packageId);
-        }
-    }
-
-    @DeleteMapping("/{userId}/packages/{packageId}/items/{type}/{itemId}")
-    public ResponseEntity<?> cancelItemInTravelPackage(@PathVariable String userId, @PathVariable String packageId, @PathVariable String type, @PathVariable String itemId) {
-        try {
-            ItemType itemType = ItemType.fromString(type); // item being flight or hotel
-            boolean success = publisherService.cancelItemInTravelPackage(userId, packageId, itemType, itemId);
-            if (success) {
-                return ResponseEntity.ok(itemType.getType() + " cancelled for item ID: " + itemId + " in user ID: " + userId + " and package ID: " + packageId);
-            } else {
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to cancel " + itemType.getType() + " for item ID: " + itemId + " in user ID: " + userId + " and package ID: " + packageId);
-            }
-        } catch (IllegalArgumentException e) {
-            return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(e.getMessage());
-        }
-    }
-
-    @GetMapping("/{userId}/packages/{packageId}")
-    public ResponseEntity<?> getTravelPackage(@PathVariable String userId, @PathVariable String packageId) {
-        TravelPackage travelPackage = publisherService.getTravelPackage(userId, packageId);
-        if (travelPackage == null) {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body("Travel package not found for user ID: " + userId + " and package ID: " + packageId);
-        }
-        return ResponseEntity.ok(travelPackage);
-    }
-
-    private EntityModel<String> bookingToEntityModel(String userId, String packageId, String message) {
-        return EntityModel.of(message,
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).getTravelPackage(userId, packageId)).withSelfRel(),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).createTravelPackage(userId)).withRel("create-package"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).addFlightToTravelPackage(userId, packageId, "")).withRel("add-flight"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).addHotelToTravelPackage(userId, packageId, "")).withRel("add-hotel"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).cancelTravelPackage(userId, packageId)).withRel("cancel-package"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).cancelItemInTravelPackage(userId, packageId, "flight", "")).withRel("cancel-flight"),
-                WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BookingController.class).cancelItemInTravelPackage(userId, packageId, "hotel", "")).withRel("cancel-hotel")
-        );
-    }
-}
-*/

@@ -35,7 +35,7 @@ const localFirebaseConfig = {
 };
 
 function setupAuth() {
-  const firebaseConfig = (location.hostname === "localhost") ? localFirebaseConfig : productionFirebaseConfig;
+  const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
 
   const firebaseApp = initializeApp(firebaseConfig);
   const auth = getAuth(firebaseApp);
@@ -47,7 +47,7 @@ function setupAuth() {
     });
 
   if (location.hostname === "localhost") {
-    connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+    // connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
     connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
 

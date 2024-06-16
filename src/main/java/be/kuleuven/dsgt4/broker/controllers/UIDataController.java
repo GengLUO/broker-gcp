@@ -31,7 +31,7 @@ public class UIDataController {
     public ResponseEntity<?> createTravelPackage(@RequestBody Map<String, Object> packageDetails) {
         // get the userId from packageDetails
         String userId = (String) packageDetails.get("userId");
-        ResponseEntity<?> responseEntity = brokerRestController.createTravelPackage(userId, packageDetails);
+        ResponseEntity<?> responseEntity = brokerRestController.createTravelPackage(packageDetails);
 
         if (responseEntity.getStatusCode() == HttpStatus.CREATED) {
             EntityModel<Map<String, String>> entityModel = (EntityModel<Map<String, String>>) responseEntity.getBody();

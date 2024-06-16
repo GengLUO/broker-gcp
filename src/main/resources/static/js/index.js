@@ -37,7 +37,7 @@ const localFirebaseConfig = {
 
 function setupAuth() {
   // Use local or production configuration based on the hostname
-  const firebaseConfig = (location.hostname === "localhost") ? localFirebaseConfig : productionFirebaseConfig;
+  const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
 
   // Initialize Firebase app
   const firebaseApp = initializeApp(firebaseConfig);
@@ -52,7 +52,7 @@ function setupAuth() {
 
   // Connect to local emulator when running on localhost
   if (location.hostname === "localhost") {
-    connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+    // connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
     connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
 
