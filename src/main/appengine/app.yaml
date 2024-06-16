@@ -19,4 +19,9 @@ automatic_scaling:
   target_cpu_utilization: 0.9
   target_throughput_utilization: 0.9
 
-
+readiness_check:
+  path: "/readiness_check"
+  timeout_sec: 5
+  check_interval_sec: 5
+  failure_threshold: 2
+  success_threshold: 2
