@@ -98,6 +98,9 @@ function wireGuiUpEvents() {
         return userCredential.user.getIdToken();
       })
     .then((token) => {
+      createPackageWhenLoggedIn();
+    })
+    .then((token) => {
       // Check the user's role and show the appropriate dashboard
           return fetch('/api/whoami', {
             headers: { Authorization: 'Bearer ' + token }
@@ -134,6 +137,7 @@ function wireGuiUpEvents() {
       })
       .then((token) => {
 //        fetchData(token);
+        createPackageWhenLoggedIn();
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
@@ -168,32 +172,34 @@ function showDashboard() {
   document.getElementById("dashboardContent").style.display = "block";
   document.getElementById("dashboardManagerContent").style.display = "none";
 
-    const uid = sessionStorage.getItem('uid');
-    const packageDetails = {
-        packageId: "",
-        userId: uid,
-        hotelId: "",
-        flightId: "",
-        roomsBooked: 0,
-        seatsBooked: 0,
-        customerName: ""
-    };
-
-    fetch('/api/travel/createPackage', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(packageDetails)
-    })
-        .then(response => response.json())
-        .then(data => {
-            document.getElementById('packageId').value = data.packageId;
-        })
-        .catch(error => console.error('Error:', error));
-
     addEventListeners(document.querySelector('.flight-booking'));
     addEventListeners(document.querySelector('.hotel-booking'));
+}
+
+function createPackageWhenLoggedIn() {
+        const uid = sessionStorage.getItem('uid');
+        const packageDetails = {
+            packageId: "",
+            userId: uid,
+            hotelId: "",
+            flightId: "",
+            roomsBooked: 0,
+            seatsBooked: 0,
+            customerName: ""
+        };
+
+        fetch('/api/travel/createPackage', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(packageDetails)
+        })
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById('packageId').value = data.packageId;
+            })
+            .catch(error => console.error('Error:', error));
 }
 
 function showManagerDashboard() {
