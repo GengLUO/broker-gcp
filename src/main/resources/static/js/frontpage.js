@@ -112,6 +112,7 @@ function wireGuiUpEvents() {
             showDashboard();
         }
               });
+
         })
         .catch((error) => {
           console.error("Error during sign in:", error.message);
