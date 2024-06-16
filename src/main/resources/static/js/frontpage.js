@@ -90,23 +90,32 @@ function wireGuiUpEvents() {
 
   signInButton.addEventListener("click", () => {
     setPersistence(window.auth, browserSessionPersistence)
-      .then(() => {
-        return signInWithEmailAndPassword(window.auth, email.value, password.value);
-      })
-      .then((userCredential) => {
-        storeUserInfo(userCredential.user);
-        return userCredential.user.getIdToken();
-      })
-      .then((token) => {
-//        fetchData(token);
-        showDashboard();
-      })
-      .catch((error) => {
-        console.error("Error during sign in:", error.message);
-        alert(error.message);
-      });
+        .then(() => {
+          return signInWithEmailAndPassword(window.auth, email.value, password.value);
+        })
+        .then((userCredential) => {
+          storeUserInfo(userCredential.user);
+          return userCredential.user.getIdToken();
+        })
+        .then((token) => {
+          // Check the user's role and show the appropriate dashboard
+          return fetch('/api/whoami', {
+            headers: { Authorization: 'Bearer ' + token }
+          })
+              .then(response => response.json())
+              .then(user => {
+                if (user.role === 'manager') {
+                  showManagerDashboard();
+                } else {
+                  showDashboard();
+                }
+              });
+        })
+        .catch((error) => {
+          console.error("Error during sign in:", error.message);
+          alert(error.message);
+        });
   });
-
   signUpButton.addEventListener("click", () => {
     setPersistence(window.auth, browserSessionPersistence)
       .then(() => {
@@ -153,11 +162,22 @@ function fetchData(token) {
 function showUnAuthenticated() {
   document.getElementById("loginContent").style.display = "block";
   document.getElementById("dashboardContent").style.display = "none";
+  document.getElementById("dashboardManagerContent").style.display = "none";
+
 }
 
 function showDashboard() {
   document.getElementById("loginContent").style.display = "none";
   document.getElementById("dashboardContent").style.display = "block";
+  document.getElementById("dashboardManagerContent").style.display = "none";
+
+}
+
+function showManagerDashboard() {
+  document.getElementById("loginContent").style.display = "none";
+  document.getElementById("dashboardContent").style.display = "none";
+  document.getElementById("dashboardManagerContent").style.display = "block";
+
 }
 
 function getHello(token) {
