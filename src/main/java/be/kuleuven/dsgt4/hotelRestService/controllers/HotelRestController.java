@@ -94,11 +94,15 @@ public class HotelRestController {
                     success = hotelRepository.prepareHotel(hotelId, roomsBooked);
                     if (success) {
                         System.out.println("Successfully booked hotel for packageId: " + packageId);
-                        transactionService.confirmAction(packageId);
+                        transactionService.confirmAction(packageId)
+                                .subscribe(
+                                        response -> System.out.println("Response from WebClient: " + response),
+                                        error -> System.err.println("Error occurred: " + error.getMessage())
+                                );
                         return ResponseEntity.ok("Hotel booked successfully");
                     }
                     break;
-                    //COMMIT
+                //COMMIT
                 case "COMMIT":
                     success = hotelRepository.commitHotel(hotelId);
                     if (success) {
@@ -106,7 +110,7 @@ public class HotelRestController {
                         return ResponseEntity.ok("Hotel committed successfully");
                     }
                     break;
-                    //ROLLBACK
+                //ROLLBACK
                 case "ROLLBACK":
                     success = hotelRepository.rollbackHotel(hotelId, roomsBooked);
                     if (success) {
