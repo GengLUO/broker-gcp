@@ -64,6 +64,8 @@ public class HotelRestController {
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> messageWrapper) {
         try {
+            System.out.println("Original pushed message: " + messageWrapper);
+
             Map<String, Object> message = (Map<String, Object>) messageWrapper.get("message");
             Map<String, String> attributes = (Map<String, String>) message.get("attributes");
 
@@ -94,7 +96,11 @@ public class HotelRestController {
                     success = hotelRepository.prepareHotel(hotelId, roomsBooked);
                     if (success) {
                         System.out.println("Successfully booked hotel for packageId: " + packageId);
-                        transactionService.confirmAction(packageId);
+                        transactionService.confirmAction(packageId)
+                                .subscribe(
+                                        response -> System.out.println("Response from WebClient: " + response),
+                                        error -> System.err.println("Error occurred: " + error.getMessage())
+                                );
                         return ResponseEntity.ok("Hotel booked successfully");
                     }
                     break;

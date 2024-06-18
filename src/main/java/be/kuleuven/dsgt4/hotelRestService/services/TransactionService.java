@@ -25,11 +25,11 @@ public class TransactionService {
     }
 
     public Mono<String> confirmAction(String packageId) {
-        System.out.println("Sending confirmation to: " + CONFIRM_ENDPOINT);
+        System.out.println("Sending confirmation to: " + CONFIRM_ENDPOINT + " with packageId: "+ packageId);
 
         Mono<String> requestBody = Mono.just(packageId);
 
-        System.out.println("Request body sent: " + requestBody);
+        requestBody.subscribe(data -> System.out.println("Request body sent: " + data));
 
         return webClientBuilder.build()
                 .post()
