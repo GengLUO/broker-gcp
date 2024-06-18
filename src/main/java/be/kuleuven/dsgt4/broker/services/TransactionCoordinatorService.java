@@ -86,8 +86,8 @@ public class TransactionCoordinatorService {
             bookingDetails.put("action", "PREPARE");
             String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
             if (flightMessageId == null) {
-                logger.error("flight-add-requests messageId is null");
-                logger.error("message content: {}", bookingDetails);
+                logger.info("flight-add-requests messageId is null");
+                logger.info("message content: {}", bookingDetails);
             }
 
             // add to the extracted packageSnapshot with a new attribute of flight status being pending
@@ -95,8 +95,8 @@ public class TransactionCoordinatorService {
 
             String hotelMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
             if (hotelMessageId == null) {
-                logger.error("hotel-add-requests messageId is null");
-                logger.error("message content: {}", bookingDetails);
+                logger.info("hotel-add-requests messageId is null");
+                logger.info("message content: {}", bookingDetails);
             }
 
             // add to the extracted packageSnapshot with a new attribute of hotel status being pending

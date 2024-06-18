@@ -41,58 +41,49 @@ const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseC
 // Initialize Firebase app
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-const user = auth.currentUser;
 const firestore = getFirestore(firebaseApp);
 
-export { firestore, auth, user }; 
-// can be accessed in other modules in the same folder (src/main/resources/static/js) using import { firestore, auth, user } from './index.js' or in other folders using import { firestore, auth, user } from '../js/index.js' 
+// Connect to Firestore emulator when running on localhost
+if (location.hostname === "localhost") {
+  connectFirestoreEmulator(firestore, 'localhost', 8084);
+  // Uncomment if using auth emulator
+  // connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
+}
 
+// Setup authentication persistence and event listeners
 function setupAuth() {
-  // Set persistence to session
   setPersistence(auth, browserSessionPersistence)
+    .then(() => {
+      // Sign out any existing user
+      if (auth.currentUser) {
+        auth.signOut().catch((error) => {
+          console.error("Error signing out existing user:", error);
+        });
+      }
+
+      console.log("Auth persistence set");
+      onAuthStateChanged(auth, (user) => {
+        if (user) {
+          user.getIdToken().then((token) => {
+            fetchData(token);
+          }).catch((error) => {
+            console.error("Error getting ID token:", error);
+          });
+        } else {
+          showUnAuthenticated();
+        }
+      });
+    })
     .catch((error) => {
       console.error("Error setting persistence:", error);
     });
-
-  // Connect to local emulator when running on localhost
-  if (location.hostname === "localhost") {
-    // connectAuthEmulator(auth, "http://localhost:8082", { disableWarnings: true });
-    connectFirestoreEmulator(firestore, 'localhost', 8084);
-  }
-
-  // Save auth and db to global scope
-  window.firebaseApp = firebaseApp;
-  window.auth = auth;
-  window.firestore = firestore;
-  window.user = user;
-
-  // Ensure any existing user is signed out
-  try {
-    auth.signOut();
-  } catch (err) {
-    console.error("Error signing out:", err);
-  }
-
-  wireUpAuthChange();
   wireGuiUpEvents();
 }
 
 setupAuth();
 
-function wireUpAuthChange() {
-  onAuthStateChanged(window.auth, (user) => {
-    if (user) {
-      user.getIdToken().then((token) => {
-        fetchData(token);
-      }).catch((error) => {
-        console.error("Error getting ID token:", error);
-      });
-    } else {
-      // Handle unauthenticated state
-      showUnAuthenticated();
-    }
-  });
-}
+// allowing other javascript files to use the auth and firestore objects via import{auth, firestore, user} from './index.js'
+export { firestore, auth }; 
 
 function wireGuiUpEvents() {
   const email = document.getElementById("email");
@@ -101,18 +92,15 @@ function wireGuiUpEvents() {
   const signUpButton = document.getElementById("btnSignUp");
 
   signInButton.addEventListener("click", () => {
-    setPersistence(window.auth, browserSessionPersistence)
-      .then(() => {
-        return signInWithEmailAndPassword(window.auth, email.value, password.value);
-      })
+    signInWithEmailAndPassword(auth, email.value, password.value)
       .then((userCredential) => {
-        storeUserInfo(userCredential.user);  // Store user info
+        console.log("signin button: auth.currentUser id", auth.currentUser.uid);
+        storeUserInfo(userCredential.user);
         return userCredential.user.getIdToken();
       })
       .then((token) => {
         fetchData(token);
-        // Optionally redirect to dashboard with authenticated state
-        window.location.href = 'html/dashboard.html'
+        window.location.href = 'html/dashboard.html';
       })
       .catch((error) => {
         console.error("Error during sign in:", error.message);
@@ -121,13 +109,11 @@ function wireGuiUpEvents() {
   });
 
   signUpButton.addEventListener("click", () => {
-    setPersistence(window.auth, browserSessionPersistence)
-      .then(() => {
-        return createUserWithEmailAndPassword(window.auth, email.value, password.value);
-      })
+    createUserWithEmailAndPassword(auth, email.value, password.value)
       .then(async (userCredential) => {
+        console.log("signup button: auth.currentUser id", auth.currentUser.uid);
         const user = userCredential.user;
-        await addDoc(collection(window.firestore, "users"), {
+        await addDoc(collection(firestore, "users"), {
           uid: user.uid,
           email: user.email,
           role: "user",
@@ -135,15 +121,12 @@ function wireGuiUpEvents() {
         });
         console.log("User profile added to Firestore");
 
-        storeUserInfo(user);  // Store user info
-
-        // Fetch ID token and handle authenticated state
+        storeUserInfo(user);
         return user.getIdToken();
       })
       .then((token) => {
         fetchData(token);
-        // Optionally redirect to dashboard
-        window.location.href = 'html/dashboard.html'
+        window.location.href = 'html/dashboard.html';
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
@@ -204,30 +187,3 @@ function whoami(token) {
 function addContent(text) {
   document.getElementById("contentdiv").innerHTML += (text + "<br/>");
 }
-
-// document.getElementById("getAllOrdersBtn").addEventListener("click", function () {
-//   console.log("button clicked");
-//   const auth = getAuth();
-//   console.log("getauth");
-//   auth.currentUser.getIdToken(true).then(function(token) {
-//     console.log("inside");
-//     console.log(token);
-//     fetch('/api/getAllOrders', {
-//       method: 'GET', // You might need to adjust this depending on your API requirements
-//       headers: {
-//         'Authorization': 'Bearer ' + token
-//       }
-//     })
-//     .then(response => response.text())
-//     .then(data => {
-//       console.log(data);
-//     })
-//     .catch(error => {
-//       console.error('Error fetching orders:', error);
-//       alert("Failed to fetch orders.");
-//     });
-//   }).catch(function(error) {
-//     console.log('Error fetching token:', error);
-//     alert("Authentication error. Please log in again.");
-//   });
-// });

@@ -7,16 +7,19 @@ import {
   } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-auth.js";
   import { connectFirestoreEmulator } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
 
+  import { auth, firestore } from './index.js';
+
   const uid = sessionStorage.getItem('uid');
   const token = sessionStorage.getItem('token');
 
   function setupDashboard() {
-    const auth = window.auth;
-    const firestore = window.firestore;
     // if the current host is localhost, connect to the Firestore emulator
     if (location.hostname === "localhost") {
       connectFirestoreEmulator(firestore, "localhost", 8084);
     }
+
+    console.log("Dashboard JS user id from auth: " + auth.currentUser.uid); // print user id
+
     // if the current authentication is not authenticated, redirect to the login page
     setPersistence(auth, browserSessionPersistence)
       .then(() => {
@@ -37,7 +40,7 @@ import {
   document.addEventListener('DOMContentLoaded', () => {
     const uid = sessionStorage.getItem('uid');
     // print user id
-    console.log("Dashboard JS user id: " + uid);
+    console.log("Dashboard JS user id from session: " + uid);
 
     const packageDetails = {
       packageId: "",

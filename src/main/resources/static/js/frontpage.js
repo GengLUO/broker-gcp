@@ -43,12 +43,6 @@ const user = auth.currentUser;
 const firestore = getFirestore(firebaseApp);
 
 function setupAuth() {
-  // const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
-
-  // const firebaseApp = initializeApp(firebaseConfig);
-  // const auth = getAuth(firebaseApp);
-  // const firestore = getFirestore(firebaseApp);
-
   setPersistence(auth, browserSessionPersistence)
     .catch((error) => {
       console.error("Error setting persistence:", error);
@@ -72,13 +66,6 @@ function setupAuth() {
     console.error("Error signing out:", err);
   }
 
-  wireUpAuthChange();
-  wireGuiUpEvents();
-}
-
-setupAuth();
-
-function wireUpAuthChange() {
   onAuthStateChanged(window.auth, (user) => {
     if (user) {
       user.getIdToken().then((token) => {
@@ -91,7 +78,11 @@ function wireUpAuthChange() {
       showUnAuthenticated();
     }
   });
+
+  wireGuiUpEvents();
 }
+
+setupAuth();
 
 function wireGuiUpEvents() {
   const email = document.getElementById("email");
@@ -226,8 +217,7 @@ function getHello(token) {
   })
   .then(response => response.text())
   .then(data => {
-    console.log(data);
-    addContent(data);
+    console.log("Hello: " + data);
   })
   .catch(error => {
     console.error("Error fetching hello:", error);
@@ -240,24 +230,14 @@ function whoami(token) {
   })
   .then(response => response.json())
   .then(data => {
-    console.log(data.email + data.role);
-    addContent("Whoami at rest service: " + data.email + " - " + data.role);
+    console.log("Whoami: " + data.email + data.role);
   })
   .catch(error => {
     console.error("Error fetching whoami:", error);
   });
 }
 
-function addContent(text) {
-  document.getElementById("contentdiv").innerHTML += (text + "<br/>");
-}
-
-
-
 function setupDashboard() {
-  const auth = window.auth;
-  const firestore = window.firestore;
-
   if (location.hostname === "localhost") {
     connectFirestoreEmulator(firestore, 'localhost', 8084);
   }
@@ -285,7 +265,7 @@ async function sendData(url, data) {
   const response = await fetch(url, {
       method: 'POST',
       headers: {
-          Authorization: 'Bearer ' + token, 
+          Authorization: 'Bearer ' + sessionStorage.getItem('token'), 
           'Content-Type': 'application/json'
       },
       body: JSON.stringify(data)
