@@ -13,7 +13,6 @@ public class TravelController {
     @GetMapping("/")
     public String showLoginForm() {
       return "forward:/html/frontpage.html";
-    //  return "forward:/html/index.html";
     }
 
     @GetMapping("/api/manager")
@@ -33,10 +32,4 @@ public class TravelController {
     public String showBookings() {
         return "forward:/html/mybookings.html";
     }
-
-    @GetMapping("/api/dashboard")
-    public String showDashboard() {
-        return "forward:/html/dashboard.html";
-    }
-
 }
