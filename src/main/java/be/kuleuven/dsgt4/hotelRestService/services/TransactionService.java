@@ -12,6 +12,7 @@ public class TransactionService {
     //    TODO: change the endpoint
 //    https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel
     private static final String CONFIRM_ENDPOINT = "https://broker-da44b.uc.r.appspot.com/feedback/confirmHotel";
+//    private static final String CONFIRM_ENDPOINT = "https://jsonplaceholder.typicode.com/posts";
 
 //    @Autowired
 //    public TransactionService(WebClient.Builder webClientBuilder) {
@@ -24,7 +25,7 @@ public class TransactionService {
     }
 
     public Mono<String> confirmAction(String packageId) {
-        System.out.println("Sending confirmation to the CONFIRM_ENDPOINT");
+        System.out.println("Sending confirmation to: " + CONFIRM_ENDPOINT);
 
         Mono<String> requestBody = Mono.just(packageId);
 
