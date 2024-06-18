@@ -237,30 +237,6 @@ function whoami(token) {
   });
 }
 
-function setupDashboard() {
-  if (location.hostname === "localhost") {
-    connectFirestoreEmulator(firestore, 'localhost', 8084);
-  }
-
-  setPersistence(auth, browserSessionPersistence)
-    .then(() => {
-      onAuthStateChanged(auth, (user) => {
-        if (user) {
-          user.getIdToken().then((token) => {
-            // user is logged in
-          }).catch((error) => {
-            console.error("Error getting ID token:", error);
-          });
-        } else {
-          showUnAuthenticated();
-        }
-      });
-    })
-    .catch((error) => {
-      console.error("Error setting persistence:", error);
-    });
-}
-
 async function sendData(url, data) {
   const response = await fetch(url, {
       method: 'POST',
