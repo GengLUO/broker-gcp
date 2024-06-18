@@ -498,17 +498,36 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
       customerName: customerName
   };
 
+//  sendData('/api/travel/bookPackage', bookingDetails).then(response => {
+//      console.log(response);
+//      alert('Booking confirmed!');
+//      document.getElementById('flightBookingForm').reset();
+//      document.getElementById('hotelBookingForm').reset();
+//      document.getElementById('bookingSummary').classList.add('hidden');
+//      document.getElementById('confirmBooking').classList.add('hidden');
+//      document.getElementById('finalizeBooking').classList.add('hidden');
+//      document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
+//      document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
+//  });
+
   sendData('/api/travel/bookPackage', bookingDetails).then(response => {
-      console.log(response);
-      alert('Booking confirmed!');
-      document.getElementById('flightBookingForm').reset();
-      document.getElementById('hotelBookingForm').reset();
-      document.getElementById('bookingSummary').classList.add('hidden');
-      document.getElementById('confirmBooking').classList.add('hidden');
-      document.getElementById('finalizeBooking').classList.add('hidden');
-      document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
-      document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
-  });
+          console.log(response);
+
+          alert('Response: ' + JSON.stringify(response));
+
+//          alert('Flight Client Message: ' + response.flightClientMessage);
+//          alert('Hotel Client Message: ' + response.hotelClientMessage);
+
+
+        document.getElementById('flightBookingForm').reset();
+        document.getElementById('hotelBookingForm').reset();
+        document.getElementById('bookingSummary').classList.add('hidden');
+        document.getElementById('confirmBooking').classList.add('hidden');
+        document.getElementById('finalizeBooking').classList.add('hidden');
+        document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
+        document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
+      });
+
 });
 
 /////////////////////////////////////////////
