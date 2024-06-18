@@ -156,6 +156,8 @@ public class BrokerService {
                         if (throwable instanceof ApiException) {
                             ApiException apiException = ((ApiException) throwable);
                             System.err.println("API Exception: " + apiException.getStatusCode().getCode());
+                            //TODO: String clientMessage = shouldRetry(apiException.getStatusCode().getCode());
+                            //TODO: (feedback to fronpage)
                             System.err.println("Retryable: " + apiException.isRetryable());
                             isRetryable.set(apiException.isRetryable());
                         } else {

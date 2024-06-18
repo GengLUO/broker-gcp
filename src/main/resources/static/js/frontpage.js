@@ -341,19 +341,25 @@ async function confirmFlightBooking(event) {
 
   document.getElementById('confirmBooking').classList.remove('hidden');
   
-  const response = await fetch('/api/travel/addFlight', {
-      method: 'POST',
-      headers: {
-          Authorization: 'Bearer ' + token, 
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(flightDetails)
-  });
+try {
+      const response = await fetch('/api/travel/addFlight', {
+          method: 'POST',
+          headers: {
+              Authorization: 'Bearer ' + token,
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(flightDetails)
+      });
 
-  if (!response.ok) {
-      console.error('confirm Flight Booking Error:', response);
-  } else {
+      if (!response.ok) {
+          throw new Error('Network response was not ok');
+      }
+
+      // Show the success message
+      alert('Passengers Successfully Confirmed!');
       console.log('confirm Flight Booking Success:', response);
+  } catch (error) {
+      console.error('confirm Flight Booking Error:', error);
   }
 }
 
@@ -404,20 +410,25 @@ async function confirmHotelBooking(event) {
 
   document.getElementById('confirmBooking').classList.remove('hidden');
 
-  const response = await fetch('/api/travel/addHotel', {
-      method: 'POST',
-      headers: {
-          Authorization: 'Bearer ' + token,
-          'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(hotelDetails)
-  });
+try {
+      const response = await fetch('/api/travel/addHotel', {
+          method: 'POST',
+          headers: {
+              Authorization: 'Bearer ' + token,
+              'Content-Type': 'application/json'
+          },
+          body: JSON.stringify(hotelDetails)
+      });
 
-  if (!response.ok) {
-      console.error('confirm Hotel Booking Error:', response.statusText);
-  }
-  else {
+      if (!response.ok) {
+          throw new Error('Network response was not ok');
+      }
+
+      // Show the success message
+      alert('Hotel Successfully Confirmed!');
       console.log('confirm Hotel Booking Success:', response);
+  } catch (error) {
+      console.error('confirm Hotel Booking Error:', error);
   }
 }
 
