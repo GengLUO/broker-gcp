@@ -6,7 +6,7 @@ import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
 
-@Service
+@Service("hotelTransactionService")
 public class TransactionService {
     private final WebClient.Builder webClientBuilder;
 
