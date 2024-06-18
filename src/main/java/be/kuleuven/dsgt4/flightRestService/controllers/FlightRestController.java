@@ -2,8 +2,6 @@ package be.kuleuven.dsgt4.flightRestService.controllers;
 
 import be.kuleuven.dsgt4.flightRestService.exceptions.FlightNotFoundException;
 import be.kuleuven.dsgt4.flightRestService.services.TransactionService;
-import org.springframework.context.event.EventListener;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.hateoas.CollectionModel;
 import org.springframework.hateoas.EntityModel;
@@ -11,14 +9,10 @@ import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import com.google.gson.Gson;
 
 import be.kuleuven.dsgt4.flightRestService.domain.Flight;
-import be.kuleuven.dsgt4.flightRestService.domain.FlightEvent;
 import be.kuleuven.dsgt4.flightRestService.domain.FlightRepository;
-import org.springframework.web.reactive.function.client.WebClient;
 
-import java.io.IOException;
 import java.util.*;
 import java.util.stream.Collectors;
 import java.util.Optional;
@@ -65,6 +59,7 @@ public class FlightRestController {
     @PostMapping("/pubsub/push")
     public ResponseEntity<String> receiveMessage(@RequestBody Map<String, Object> messageWrapper) {
         try {
+
             Map<String, Object> message = (Map<String, Object>) messageWrapper.get("message");
             Map<String, String> attributes = (Map<String, String>) message.get("attributes");
 
@@ -94,9 +89,13 @@ public class FlightRestController {
                 case "PREPARE":
                     success = flightRepository.prepareFlight(flightId, seatsBooked);
                     if (success) {
-                        System.out.println("Successfully booked flight for packageId: " + packageId);
-                        transactionService.confirmAction(packageId);
-                        return ResponseEntity.ok("Flight booked successfully");
+                        System.out.println("Successfully booked hotel for packageId: " + packageId);
+                        transactionService.confirmAction(packageId)
+                                .subscribe(
+                                        response -> System.out.println("Response from WebClient: " + response),
+                                        error -> System.err.println("Error occurred: " + error.getMessage())
+                                );
+                        return ResponseEntity.ok("Hotel booked successfully");
                     }
                     break;
                 //COMMIT
@@ -158,4 +157,15 @@ public class FlightRestController {
         return ResponseEntity.notFound().build();
     }
 
+    @GetMapping("/test-webclient")
+    public ResponseEntity<String> testWebClient(@RequestParam String packageId) {
+        // Call TransactionService to trigger WebClient request
+        transactionService.confirmAction(packageId)
+                .subscribe(
+                        response -> System.out.println("Response from WebClient: " + response),
+                        error -> System.err.println("Error occurred: " + error.getMessage())
+                );
+
+        return ResponseEntity.ok("WebClient test triggered. ");
+    }
 }

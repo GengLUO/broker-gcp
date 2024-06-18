@@ -47,13 +47,11 @@ public class SecurityFilter extends OncePerRequestFilter {
                             .withIssuer("https://securetoken.google.com/broker-da44b")
                             .build(); // Reusable verifier instance
                     DecodedJWT verifiedJwt = verifier.verify(token);
-                    System.out.println("JWT Verified. Subject: " + verifiedJwt.getSubject());
                 }
 
                 String email = jwt.getClaim("email").asString();
                 List<String> roles = jwt.getClaim("roles").asList(String.class);
                 String role = roles != null && !roles.isEmpty() ? roles.get(0) : "user" ;
-                System.out.println("A " + role + " just logged in");
                 User user = new User(email, role);
                 SecurityContext context = SecurityContextHolder.getContext();
                 context.setAuthentication(new FirebaseAuthentication(user));
@@ -91,12 +89,6 @@ public class SecurityFilter extends OncePerRequestFilter {
                 return new ArrayList<>();
             }
         }
-//        TODO:Extension
-//        public Collection<? extends GrantedAuthority> getAuthorities() {
-//            List<SimpleGrantedAuthority> authorities = new ArrayList<>();
-//            authorities.add(new SimpleGrantedAuthority("ROLE_" + user.getRole().toUpperCase()));
-//            return authorities;
-//        }
 
         @Override
         public Object getCredentials() {
