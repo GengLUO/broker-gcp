@@ -30,9 +30,7 @@ import io.grpc.ManagedChannelBuilder;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.io.IOException;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
@@ -128,10 +126,10 @@ public class BrokerService {
         }
     }
 
-    public ApiFuture<String> publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
+    public ApiFuture<String> publishMessage(String topicId, Map<String, Object> message) {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
-        AtomicReference<String> clientMessage = new AtomicReference<>("");
+        final AtomicReference<ApiFuture<String>> clientMessageFutureRef = new AtomicReference<>(ApiFutures.immediateFuture("PENDING"));
         try {
             // Provides an executor service for processing messages. The default
             // `executorProvider` used by the publisher has a default thread count of
@@ -162,7 +160,9 @@ public class BrokerService {
                             System.err.println("API Exception: " + apiException.getStatusCode().getCode());
                             System.err.println("Retryable: " + apiException.isRetryable());
                             isRetryable.set(apiException.isRetryable());
-                            clientMessage.set(shouldRetry(apiException.getStatusCode().getCode()));
+                            String statusCode = shouldRetry(apiException.getStatusCode().getCode());
+                            // set the client message to the status code
+                            clientMessageFutureRef.set(ApiFutures.immediateFuture(statusCode));
                         } else {
                             System.err.println("Error publishing message: " + throwable.getMessage());
                         }
@@ -171,7 +171,8 @@ public class BrokerService {
                     @Override
                     public void onSuccess(String messageId) {
                         System.out.println("Published message ID: " + messageId);
-                        clientMessage.set("SUCCESS");
+                        // set the client message to the SUCCESS
+                        clientMessageFutureRef.set(ApiFutures.immediateFuture("SUCCESS"));
                     }
                 },
                 MoreExecutors.directExecutor()
@@ -180,14 +181,20 @@ public class BrokerService {
             System.out.println("Message ID Future: " + messageIdFuture);
             System.out.println("Message ID Future get: " + messageIdFuture.get());
 
-//            return isRetryable.get() ? messageIdFuture.get() : null;
-            return clientMessage.get();
+        } catch (IOException | ExecutionException | InterruptedException e) {
+            System.err.println("Error publishing message: " + e.getMessage());
+            clientMessageFutureRef.set(ApiFutures.immediateFuture("ERROR"));
         } finally {
             if (publisher != null) {
-                publisher.shutdown();
-                publisher.awaitTermination(1, TimeUnit.MINUTES);
+                try {
+                    publisher.shutdown();
+                    publisher.awaitTermination(1, TimeUnit.MINUTES);
+                } catch (InterruptedException e) {
+                    System.err.println("Error shutting down publisher: " + e.getMessage());
+                }
             }
         }
+        return clientMessageFutureRef.get();
     }
 
     private String shouldRetry(StatusCode.Code statusCode) {

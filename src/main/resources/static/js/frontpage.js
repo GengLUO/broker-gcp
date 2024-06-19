@@ -106,7 +106,6 @@ function wireGuiUpEvents() {
         return userCredential.user.getIdToken();
       })
     .then(async (token) => {
-        // createPackageWhenLoggedIn(token);
       // Check the user's role and show the appropriate dashboard
           const response = await fetch('/api/whoami', {
         headers: { Authorization: 'Bearer ' + token }
@@ -364,8 +363,11 @@ function showPassengerFields(event) {
     `;
   }
 
-  // create travel package
-  createPackage(sessionStorage.getItem('token'));
+  // if packageId is empty, create a new package
+  if (!document.getElementById('packageId').value) {
+    const token = sessionStorage.getItem('token');
+    createPackage(token);
+  }
 }
 
 async function confirmFlightBooking(event) {
@@ -565,17 +567,24 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
   };
 
   sendData('/api/travel/bookPackage', bookingDetails).then(response => {
-      console.log(response);
-      alert('Booking confirmed!');
-      document.getElementById('flightBookingForm').reset();
-      document.getElementById('hotelBookingForm').reset();
-      document.getElementById('bookingSummary').classList.add('hidden');
-      document.getElementById('confirmBooking').classList.add('hidden');
-      document.getElementById('finalizeBooking').classList.add('hidden');
-      document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
-      document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
-      // clear the packageId
-      document.getElementById('packageId').value = '';
+    console.log(response);
+    if (response.message) {
+        alert('Booking message: ' + response.message);
+    } else {
+        alert('Booking confirmed!');
+    }
+    document.getElementById('flightBookingForm').reset();
+    document.getElementById('hotelBookingForm').reset();
+    document.getElementById('bookingSummary').classList.add('hidden');
+    document.getElementById('confirmBooking').classList.add('hidden');
+    document.getElementById('finalizeBooking').classList.add('hidden');
+    document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
+    document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
+    // clear the packageId
+    document.getElementById('packageId').value = '';
+  }).catch(error => {
+      console.error('Error processing travel package booking: ', error);
+      alert('Error processing travel package booking: ' + error.message);
   });
 });
 

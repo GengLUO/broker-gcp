@@ -12,12 +12,12 @@ import org.springframework.web.bind.annotation.*;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
 import com.google.api.core.ApiFutureCallback;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import java.util.HashMap;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.Executor;
-import java.util.concurrent.Executors;
+import java.util.concurrent.CompletableFuture;
 
     /** Documentation
      * This class is responsible for handling HTTP requests related to travel bookings.
@@ -49,7 +49,7 @@ public class BrokerRestController {
 
     private final BrokerService brokerService;
     private final TransactionCoordinatorService transactionCoordinatorService;
-    private static final Executor executor = Executors.newCachedThreadPool();
+    private static final Logger logger = LoggerFactory.getLogger(BrokerRestController.class);
 
     @Autowired
     public BrokerRestController(BrokerService brokerService, TransactionCoordinatorService transactionCoordinatorService) {
@@ -171,34 +171,28 @@ public class BrokerRestController {
 
     // Booking Methods: 2PC transaction preparation
     @PostMapping("/packages/{packageId}/book")
-    public ResponseEntity<?> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
+    public CompletableFuture<ResponseEntity<?>> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
         ApiFuture<Map<String, String>> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
-//        ApiFutures.addCallback(result, new ApiFutureCallback<Map<String, String>>() {
-//            @Override
-//            public void onFailure(Throwable t) {
-//                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
-//            }
-//
-//            public void onSuccess(Map<String, String> clientMessages) {
-//                // Create the response entity with the client messages
-//                EntityModel<Map<String, String>> resource = EntityModel.of(clientMessages);
-//                ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
-//                        .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
-//            }
-//        }, Runnable::run);
-//        return ResponseEntity.ok("Booking process initiated for package ID: " + packageId);
-
-        Map<String, String> clientMessages = null;
-        try {
-            clientMessages = result.get();
-        } catch (InterruptedException | ExecutionException e) {
-            throw new RuntimeException(e);
-        }
-        System.out.println("Result: " + clientMessages);
-            return ResponseEntity.ok(clientMessages);
+        CompletableFuture<ResponseEntity<?>> responseFuture = new CompletableFuture<>();
+        ApiFutures.addCallback(result, new ApiFutureCallback<Map<String, String>>() {
+            @Override
+            public void onFailure(Throwable t) {
+                // Create the response entity with the error message
+                ResponseEntity<?> responseEntity = ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
+                responseFuture.complete(responseEntity);
+            }
+    
+            public void onSuccess(Map<String, String> clientMessages) {
+                // Create the response entity with the client messages
+                EntityModel<Map<String, String>> resource = EntityModel.of(clientMessages);
+                ResponseEntity<?> responseEntity = ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
+                        .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
+                responseFuture.complete(responseEntity);
+            }
+        }, Runnable::run);
+        return responseFuture;
     }
     
-
     // Booking Methods: 2PC transaction execution (check the confirmation of flight and hotel booking)
     @PostMapping("/packages/{packageId}/confirmFlight")
     public ResponseEntity<?> confirmFlightBooking(@RequestBody String packageId) {
@@ -238,23 +232,27 @@ public class BrokerRestController {
         return ResponseEntity.ok("Hotel booking confirmed for package ID: " + packageId);
     }
 
-    // Booking Methods: 2PC transaction execution
+    // Booking Methods: 2PC transaction execution (check the confirmation of flight and hotel booking)
     @PostMapping("/packages/{packageId}/confirm")
     public ResponseEntity<String> confrimTravelPackageBooking(@RequestBody Map<String, Object> bookingDetails) {
         String packageId = (String) bookingDetails.get("packageId");
         ApiFuture<String> result = transactionCoordinatorService.confirmTravelPackage(packageId, bookingDetails);
+        CompletableFuture<ResponseEntity<String>> responseFuture = new CompletableFuture<>();
         ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
             @Override
             public void onFailure(Throwable t) {
-                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking confirmation: " + t.getMessage());
+                logger.error("Error processing travel package booking confirmation: ", t);
+                responseFuture.complete(ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                    .body("Error processing travel package booking confirmation: " + t.getMessage()));
             }
 
             @Override
             public void onSuccess(String messageId) {
-                ResponseEntity.ok("Travel package booking confirmed.");
+                responseFuture.complete(ResponseEntity.ok("Travel package booking confirmed."));
             }
         }, Runnable::run);
-        return ResponseEntity.ok("Booking confirmation process initiated for package ID: " + packageId);
+
+        return responseFuture.join();
     }
 
 

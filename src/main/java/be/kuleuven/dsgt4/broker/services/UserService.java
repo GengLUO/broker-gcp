@@ -92,13 +92,21 @@ public class UserService {
             bookingDetail.put("flightDate", getFlightDetail(docData, "flightDate"));
             bookingDetail.put("flightId", getFlightDetail(docData, "flightId"));
             bookingDetail.put("seatsBooked", getFlightDetail(docData, "seatsBooked"));
-            bookingDetail.put("flightConfirmStatus", docData.getOrDefault("flightConfirmStatus", "pending"));
+            Object flightConfirmStatus = docData.get("flightConfirmStatus");
+            if (flightConfirmStatus == null || flightConfirmStatus.equals("false")) {
+                flightConfirmStatus = "pending";
+            }
+            bookingDetail.put("flightConfirmStatus", flightConfirmStatus);
             bookingDetail.put("hotelDestination", getHotelDetail(docData, "hotelDestination"));
             bookingDetail.put("hotelDate", getHotelDetail(docData, "hotelDate"));
             bookingDetail.put("hotelDays", getHotelDetail(docData, "hotelDays"));
             bookingDetail.put("hotelId", getHotelDetail(docData, "hotelId"));
             bookingDetail.put("roomsBooked", getHotelDetail(docData, "roomsBooked"));
-            bookingDetail.put("hotelConfirmStatus", docData.getOrDefault("hotelConfirmStatus", "pending"));
+            Object hotelConfirmStatus = docData.get("hotelConfirmStatus");
+            if (hotelConfirmStatus == null || hotelConfirmStatus.equals("false")) {
+                hotelConfirmStatus = "pending";
+            }
+            bookingDetail.put("hotelConfirmStatus", hotelConfirmStatus);
 
             bookingDetails.add(bookingDetail);
         }

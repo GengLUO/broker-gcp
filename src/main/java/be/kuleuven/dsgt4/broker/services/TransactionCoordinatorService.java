@@ -1,7 +1,9 @@
 package be.kuleuven.dsgt4.broker.services;
 
 import com.google.api.core.ApiFuture;
+import com.google.api.core.ApiFutures;
 import com.google.cloud.firestore.*;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -62,11 +64,11 @@ public class TransactionCoordinatorService {
             }
 
             // Prepare Phase
-            Map<String, String> clientMessages = new HashMap<>();
+            ApiFuture<Map<String, String>> futureMap = ApiFutures.immediateFuture(new HashMap<String, String>());
             // add an actribute action in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "PREPARE");
-            ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
-            ApiFuture<String> hotelMessageIdFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
+            ApiFuture<String> flightMessageFuture = brokerService.publishMessage("flight-topic", bookingDetails);
+            ApiFuture<String> hotelMessageFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
 
             // add to the extracted packageSnapshot with a new attribute of flight status being pending
             transaction.update(packageRef, "flightConfirmStatus", false);
@@ -80,7 +82,15 @@ public class TransactionCoordinatorService {
             DocumentReference userRef = db.collection("users").document(userId);
             transaction.update(userRef, "travelPackages", FieldValue.arrayUnion(packageId));
 
-            return clientMessages;
+            // wait for the futures to complete
+            String flightMessage = flightMessageFuture.get();
+            String hotelMessage = hotelMessageFuture.get();
+
+            futureMap.get().put("flightMessage", flightMessage);
+            futureMap.get().put("hotelMessage", hotelMessage);
+
+            // wait for the futures to complete
+            return futureMap.get();
         });
     }
 
@@ -113,6 +123,7 @@ public class TransactionCoordinatorService {
                 try {
                     // Wait for the confirmTravelPackage to complete
                     ApiFuture<String> confirmFuture = confirmTravelPackage(packageId, packageSnapshot.getData());
+                    // wait for the future to complete
                     confirmFuture.get(3, TimeUnit.MINUTES); // Timeout after 30 seconds
                 } catch (ExecutionException | InterruptedException | TimeoutException e) {
                     logger.error("Error confirming travel package: {}", e.getMessage());
@@ -169,9 +180,22 @@ public class TransactionCoordinatorService {
             ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
             ApiFuture<String> hotelMessageIdFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
 
-            return "Travel Package " + packageId + " confirmed initiated successfully.";
+            try {
+                // Wait for the futures to complete
+                String flightMessageId = flightMessageIdFuture.get();
+                String hotelMessageId = hotelMessageIdFuture.get();
+
+                logger.info("Flight message ID: {}", flightMessageId);
+                logger.info("Hotel message ID: {}", hotelMessageId);
+            } catch (Exception e) {
+                logger.error("Error during message publishing: ", e);
+                throw new RuntimeException("Error during message publishing: " + e.getMessage(), e);
+            }
+
+            return "Travel Package " + packageId + " confirmed successfully.";
         });
     }
+
 
     // 3. Abort Phase of the 2PC Booking (Cancel Booking)
     public ApiFuture<String> cancelTravelPackage(String packageId) {

@@ -8,6 +8,7 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import java.util.concurrent.CompletableFuture;
 
 @Controller
 @RequestMapping("/api/travel")
@@ -58,9 +59,7 @@ public class UIDataController {
 
     @PostMapping("/bookPackage")
     @ResponseBody
-    public ResponseEntity<?> bookTravelPackage(@RequestBody Map<String, Object> bookingDetails) {
-        // get the userId from bookingDetails
-        String userId = (String) bookingDetails.get("userId");
+    public CompletableFuture<ResponseEntity<?>> bookTravelPackage(@RequestBody Map<String, Object> bookingDetails) {
         // 打印 bookingDetails 的所有内容
         System.out.println("Booking Details passed to bookTravelPackage method:");
         for (Map.Entry<String, Object> entry : bookingDetails.entrySet()) {
