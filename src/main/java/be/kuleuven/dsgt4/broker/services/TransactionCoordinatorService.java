@@ -82,12 +82,9 @@ public class TransactionCoordinatorService {
             DocumentReference userRef = db.collection("users").document(userId);
             transaction.update(userRef, "travelPackages", FieldValue.arrayUnion(packageId));
 
-            // wait for the futures to complete
-            String flightMessage = flightMessageFuture.get();
-            String hotelMessage = hotelMessageFuture.get();
 
-            futureMap.get().put("flightMessage", flightMessage);
-            futureMap.get().put("hotelMessage", hotelMessage);
+            futureMap.get().put("flightMessage", flightMessageFuture.get());
+            futureMap.get().put("hotelMessage", hotelMessageFuture.get());
 
             // wait for the futures to complete
             return futureMap.get();
