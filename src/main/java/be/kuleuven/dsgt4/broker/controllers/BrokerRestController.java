@@ -1,6 +1,5 @@
 package be.kuleuven.dsgt4.broker.controllers;
 
-import be.kuleuven.dsgt4.auth.WebSecurityConfig;
 import be.kuleuven.dsgt4.broker.domain.TravelPackage;
 import be.kuleuven.dsgt4.broker.services.BrokerService;
 import be.kuleuven.dsgt4.broker.services.TransactionCoordinatorService;
@@ -9,11 +8,9 @@ import org.springframework.hateoas.EntityModel;
 import org.springframework.hateoas.server.mvc.WebMvcLinkBuilder;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.web.bind.annotation.*;
 import com.google.api.core.ApiFuture;
 import com.google.api.core.ApiFutures;
-import com.google.protobuf.Api;
 import com.google.api.core.ApiFutureCallback;
 
 import java.util.HashMap;
