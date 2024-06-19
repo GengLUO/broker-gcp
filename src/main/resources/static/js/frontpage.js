@@ -373,7 +373,8 @@ async function confirmFlightBooking(event) {
   const customerName = flightBookingSection.querySelector('.passengerNames input').value;
 
   let bookingDetails = JSON.parse(sessionStorage.getItem('bookingDetails'));
-  if (!bookingDetails.flights.includes(selectedFlight)) {
+  // handel null for selectedFlight
+  if (selectedFlight != null && !bookingDetails.flights.includes(selectedFlight)) {
     bookingDetails.flights.push(String(selectedFlight));
   }
   bookingDetails.seatsBooked = parseInt(numPassengers, 10);
@@ -422,7 +423,7 @@ async function confirmHotelBooking(event) {
   const numDays = hotelBookingSection.querySelector('.numDays').value;
 
   let bookingDetails = JSON.parse(sessionStorage.getItem('bookingDetails'));
-  if (!bookingDetails.hotels.includes(selectedHotel)) {
+  if (selectedHotel != null && !bookingDetails.hotels.includes(selectedHotel)) {
     bookingDetails.hotels.push(String(selectedHotel));
   }
   bookingDetails.roomsBooked = parseInt(numPeople, 10);
