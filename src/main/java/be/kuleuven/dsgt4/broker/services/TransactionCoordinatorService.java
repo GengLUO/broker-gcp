@@ -49,7 +49,7 @@ public class TransactionCoordinatorService {
     }
 
     // 1. Prepare Phase of the 2PC Booking (Prepare Booking)
-    public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
+    public ApiFuture<Map<String, String>> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
@@ -61,30 +61,8 @@ public class TransactionCoordinatorService {
                 throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
             }
 
-            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
-            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
-
-            // Print flights
-            if (flights != null) {
-                System.out.println("Flights:");
-                for (Map<String, Object> flight : flights) {
-                    System.out.println(flight);
-                }
-            } else {
-                System.out.println("flights is Null.");
-            }
-
-            // Print hotels
-            if (hotels != null) {
-                System.out.println("Hotels:");
-                for (Map<String, Object> hotel : hotels) {
-                    System.out.println(hotel);
-                }
-            } else {
-                System.out.println("hotels is Null.");
-            }
-
             // Prepare Phase
+            Map<String, String> clientMessages = new HashMap<>();
             // add an actribute action in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "PREPARE");
             ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
@@ -102,7 +80,7 @@ public class TransactionCoordinatorService {
             DocumentReference userRef = db.collection("users").document(userId);
             transaction.update(userRef, "travelPackages", FieldValue.arrayUnion(packageId));
 
-            return "Travel Package " + packageId + " initated booking successfully.";
+            return clientMessages;
         });
     }
 

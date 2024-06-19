@@ -10,6 +10,7 @@ import com.google.api.gax.core.NoCredentialsProvider;
 import com.google.api.gax.grpc.GrpcTransportChannel;
 import com.google.api.gax.rpc.ApiException;
 import com.google.api.gax.rpc.FixedTransportChannelProvider;
+import com.google.api.gax.rpc.StatusCode;
 import com.google.api.gax.rpc.TransportChannelProvider;
 import com.google.cloud.pubsub.v1.Publisher;
 import com.google.cloud.pubsub.v1.SubscriptionAdminClient;
@@ -36,6 +37,8 @@ import java.util.Map;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
+
 @Service
 public class BrokerService {
 
@@ -128,6 +131,7 @@ public class BrokerService {
     public ApiFuture<String> publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
+        AtomicReference<String> clientMessage = new AtomicReference<>("");
         try {
             // Provides an executor service for processing messages. The default
             // `executorProvider` used by the publisher has a default thread count of
@@ -158,6 +162,7 @@ public class BrokerService {
                             System.err.println("API Exception: " + apiException.getStatusCode().getCode());
                             System.err.println("Retryable: " + apiException.isRetryable());
                             isRetryable.set(apiException.isRetryable());
+                            clientMessage.set(shouldRetry(apiException.getStatusCode().getCode()));
                         } else {
                             System.err.println("Error publishing message: " + throwable.getMessage());
                         }
@@ -166,6 +171,7 @@ public class BrokerService {
                     @Override
                     public void onSuccess(String messageId) {
                         System.out.println("Published message ID: " + messageId);
+                        clientMessage.set("SUCCESS");
                     }
                 },
                 MoreExecutors.directExecutor()
@@ -174,7 +180,8 @@ public class BrokerService {
             System.out.println("Message ID Future: " + messageIdFuture);
             System.out.println("Message ID Future get: " + messageIdFuture.get());
 
-            return isRetryable.get() ? messageIdFuture : null;
+//            return isRetryable.get() ? messageIdFuture.get() : null;
+            return clientMessage.get();
         } finally {
             if (publisher != null) {
                 publisher.shutdown();
@@ -183,18 +190,24 @@ public class BrokerService {
         }
     }
 
-    private boolean shouldRetry(String statusCode) {
+    private String shouldRetry(StatusCode.Code statusCode) {
         switch (statusCode) {
-            case "ABORTED":
-            case "CANCELLED":
-            case "DEADLINE_EXCEEDED":
-            case "INTERNAL":
-            case "RESOURCE_EXHAUSTED":
-            case "UNAVAILABLE":
-            case "UNKNOWN":
-                return true;
+            case ABORTED:
+                return "ABORTED";
+            case CANCELLED:
+                return "CANCELLED";
+            case DEADLINE_EXCEEDED:
+                return "DEADLINE_EXCEEDED";
+            case INTERNAL:
+                return "INTERNAL";
+            case RESOURCE_EXHAUSTED:
+                return "RESOURCE_EXHAUSTED";
+            case UNAVAILABLE:
+                return "UNAVAILABLE";
+            case UNKNOWN:
+                return "UNKNOWN";
             default:
-                return false;
+                return "NO_RETRY";
         }
     }
 

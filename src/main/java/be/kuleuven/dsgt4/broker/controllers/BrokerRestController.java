@@ -15,6 +15,7 @@ import com.google.api.core.ApiFutureCallback;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
 import java.util.concurrent.Executors;
 
@@ -171,21 +172,30 @@ public class BrokerRestController {
     // Booking Methods: 2PC transaction preparation
     @PostMapping("/packages/{packageId}/book")
     public ResponseEntity<?> bookTravelPackage(@PathVariable String packageId, @RequestBody Map<String, Object> bookingDetails) {
-        ApiFuture<String> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
-        ApiFutures.addCallback(result, new ApiFutureCallback<String>() {
-            @Override
-            public void onFailure(Throwable t) {
-                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
-            }
-    
-            @Override
-            public void onSuccess(String message) {
-                EntityModel<String> resource = bookingToEntityModel(packageId, message);
-                ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
-                        .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
-            }
-        }, Runnable::run);
-        return ResponseEntity.ok("Booking process initiated for package ID: " + packageId);
+        ApiFuture<Map<String, String>> result = transactionCoordinatorService.bookTravelPackage(packageId, bookingDetails);
+//        ApiFutures.addCallback(result, new ApiFutureCallback<Map<String, String>>() {
+//            @Override
+//            public void onFailure(Throwable t) {
+//                ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
+//            }
+//
+//            public void onSuccess(Map<String, String> clientMessages) {
+//                // Create the response entity with the client messages
+//                EntityModel<Map<String, String>> resource = EntityModel.of(clientMessages);
+//                ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
+//                        .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
+//            }
+//        }, Runnable::run);
+//        return ResponseEntity.ok("Booking process initiated for package ID: " + packageId);
+
+        Map<String, String> clientMessages = null;
+        try {
+            clientMessages = result.get();
+        } catch (InterruptedException | ExecutionException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println("Result: " + clientMessages);
+            return ResponseEntity.ok(clientMessages);
     }
     
 
