@@ -566,6 +566,8 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
       customerName: customerName
   };
 
+  alert('Booking process initiated. Please wait until completion!');
+
   sendData('/api/travel/bookPackage', bookingDetails).then(response => {
     console.log(response);
     if (response.message) {
