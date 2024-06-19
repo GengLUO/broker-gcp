@@ -47,8 +47,6 @@ public class UIDataController {
     @PostMapping("/addFlight")
     @ResponseBody
     public ResponseEntity<?> addFlightToTravelPackage(@RequestBody Map<String, Object> flightDetails) {
-        // get the userId from flightDetails
-        String userId = (String) flightDetails.get("userId");
         String packageId = (String) flightDetails.get("packageId");
         System.out.println("Package ID passed to addFlightToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Flight details: " + flightDetails);
@@ -58,7 +56,6 @@ public class UIDataController {
     @PostMapping("/addHotel")
     @ResponseBody
     public ResponseEntity<?> addHotelToTravelPackage(@RequestBody Map<String, Object> hotelDetails) {
-        String userId = (String) hotelDetails.get("userId");
         String packageId = (String) hotelDetails.get("packageId");
         System.out.println("Package ID passed to addHotelToTravelPackage method: " + packageId);  // Print out packageId
         System.out.println("Hotel details: " + hotelDetails);

@@ -125,7 +125,7 @@ public class BrokerService {
         }
     }
 
-    public String publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
+    public ApiFuture<String> publishMessage(String topicId, Map<String, Object> message) throws IOException, ExecutionException, InterruptedException {
         TopicName topicName = TopicName.of(PROJECT_ID, topicId);
         Publisher publisher = null;
         try {
@@ -174,7 +174,7 @@ public class BrokerService {
             System.out.println("Message ID Future: " + messageIdFuture);
             System.out.println("Message ID Future get: " + messageIdFuture.get());
 
-            return isRetryable.get() ? messageIdFuture.get() : null;
+            return isRetryable.get() ? messageIdFuture : null;
         } finally {
             if (publisher != null) {
                 publisher.shutdown();

@@ -66,7 +66,8 @@ public class BrokerRestController {
             testMessage.put("type", "test");
             testMessage.put("message", "Test message");
             System.out.println("Finish creating test message");
-            String messageId = brokerService.publishMessage(topic, testMessage);
+            ApiFuture<String> messageIdFuture = brokerService.publishMessage(topic, testMessage);
+            String messageId = messageIdFuture.get();
             return ResponseEntity.ok("Test message published successfully. Message ID: " + messageId);
         } catch (Exception e) {
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Failed to publish test message: " + e.getMessage());

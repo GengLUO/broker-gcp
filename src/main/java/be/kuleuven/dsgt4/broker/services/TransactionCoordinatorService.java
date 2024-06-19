@@ -8,11 +8,14 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 
 import be.kuleuven.dsgt4.broker.domain.TravelPackage;
+import io.grpc.netty.shaded.io.netty.handler.timeout.TimeoutException;
 
 @Service
 public class TransactionCoordinatorService {
@@ -84,27 +87,20 @@ public class TransactionCoordinatorService {
             // Prepare Phase
             // add an actribute action in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "PREPARE");
-            String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
-            if (flightMessageId == null) {
-                logger.info("flight-add-requests messageId is null");
-                logger.info("message content: {}", bookingDetails);
-            }
+            ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
+            ApiFuture<String> hotelMessageIdFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
 
             // add to the extracted packageSnapshot with a new attribute of flight status being pending
             transaction.update(packageRef, "flightConfirmStatus", false);
-
-            String hotelMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
-            if (hotelMessageId == null) {
-                logger.info("hotel-add-requests messageId is null");
-                logger.info("message content: {}", bookingDetails);
-            }
-
             // add to the extracted packageSnapshot with a new attribute of hotel status being pending
             transaction.update(packageRef, "hotelConfirmStatus", false);
 
+            logger.info("message content: {}", bookingDetails);
+
             String userId = (String) bookingDetails.get("userId");
-            DocumentReference userRef = db.collection("users").document(userId).collection("travelPackages").document(packageId);
-            transaction.set(userRef, bookingDetails);
+            // store the packageId in the user's travelPackages list
+            DocumentReference userRef = db.collection("users").document(userId);
+            transaction.update(userRef, "travelPackages", FieldValue.arrayUnion(packageId));
 
             return "Travel Package " + packageId + " initated booking successfully.";
         });
@@ -132,14 +128,23 @@ public class TransactionCoordinatorService {
                 }
             }
 
-            if (packageSnapshot.contains("flightConfirmStatus") && packageSnapshot.contains("hotelConfirmStatus")) {
-                boolean flightConfirmStatus = packageSnapshot.getBoolean("flightConfirmStatus");
-                boolean hotelConfirmStatus = packageSnapshot.getBoolean("hotelConfirmStatus");
+            boolean flightConfirmStatus = packageSnapshot.contains("flightConfirmStatus") && packageSnapshot.getBoolean("flightConfirmStatus");
+            boolean hotelConfirmStatus = packageSnapshot.contains("hotelConfirmStatus") && packageSnapshot.getBoolean("hotelConfirmStatus");
 
-                if (flightConfirmStatus && hotelConfirmStatus) {
-                    confirmTravelPackage(packageId, packageSnapshot.getData());
-                } else {
-                    cancelTravelPackage(packageId);
+            if (flightConfirmStatus && hotelConfirmStatus) {
+                try {
+                    // Wait for the confirmTravelPackage to complete
+                    ApiFuture<String> confirmFuture = confirmTravelPackage(packageId, packageSnapshot.getData());
+                    confirmFuture.get(3, TimeUnit.MINUTES); // Timeout after 30 seconds
+                } catch (ExecutionException | InterruptedException | TimeoutException e) {
+                    logger.error("Error confirming travel package: {}", e.getMessage());
+                    // If confirmation fails, cancel the travel package
+                    ApiFuture<String> cancelFuture = cancelTravelPackage(packageId);
+                    try {
+                        cancelFuture.get(3, TimeUnit.MINUTES); // Timeout after 30 seconds
+                    } catch (ExecutionException | InterruptedException | TimeoutException cancelException) {
+                        logger.error("Error cancelling travel package: {}", cancelException.getMessage());
+                    }
                 }
             } else {
                 logger.info("Booking confirmation not yet complete for package: {}", packageId);
@@ -149,29 +154,44 @@ public class TransactionCoordinatorService {
     }
 
     // 2. Commit Phase of the 2PC Booking (Confirm Booking)
-    public ApiFuture<String> confirmTravelPackage(String packageId, Map<String, Object> bookingDetails) {
+    public ApiFuture<String> confirmTravelPackage(String packageId, Map<String, Object> dataBasePackage) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
             logger.info("Confirming travel package with packageId: {}", packageId);
 
             // Commit Phase 
+            // construct the bookingDetails from the dataBasePackage
+            Map<String, Object> bookingDetails = new HashMap<>();
+            bookingDetails.put("packageId", packageId);
+            bookingDetails.put("userId", dataBasePackage.get("userId"));
+
+            // Extract hotelId from the hotels list
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) dataBasePackage.get("hotels");
+            if (hotels != null && !hotels.isEmpty()) {
+                String hotelId = (String) hotels.get(0).get("hotelId");
+                bookingDetails.put("hotelId", hotelId);
+                String roomsBooked = (String) hotels.get(0).get("roomsBooked");
+                bookingDetails.put("roomsBooked", roomsBooked);
+            }
+
+            // Extract flightId from the flights list
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) dataBasePackage.get("flights");
+            if (flights != null && !flights.isEmpty()) {
+                String flightId = (String) flights.get(0).get("flightId");
+                bookingDetails.put("flightId", flightId);
+                String seatsBooked = (String) flights.get(0).get("seatsBooked");
+                bookingDetails.put("seatsBooked", seatsBooked);
+                String customerName = (String) flights.get(0).get("customerName");
+                bookingDetails.put("customerName", customerName);
+            }
 
             // update the action attribute in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "COMMIT");
-            String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
-            if (flightMessageId == null) {
-                logger.error("flight-booking-requests messageId is null");
-                logger.error("message content: {}", bookingDetails);
-            }
+            ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
+            ApiFuture<String> hotelMessageIdFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
 
-            String hoteltMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
-            if (hoteltMessageId == null) {
-                logger.error(" hotel-booking-requests messageId is null");
-                logger.error("message content: {}", bookingDetails);
-            }
-
-            return "Travel Package " + packageId + " confirmed successfully.";
+            return "Travel Package " + packageId + " confirmed initiated successfully.";
         });
     }
 
@@ -187,52 +207,55 @@ public class TransactionCoordinatorService {
                 throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
             }
 
-            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
-            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
-
             // Commit Phase for Cancellation
-            // update the action attribute in the bookingDetails to indicate the action and publish the message
-            Map<String, Object> bookingDetails = packageSnapshot.getData();
-            bookingDetails.put("action", "ABORT");
-            String flightMessageId = brokerService.publishMessage("flight-cancel-request", bookingDetails);
-            if (flightMessageId == null) {
-                logger.error("flight-cancel-requests messageId is null");
-                logger.error("message content: {}", bookingDetails);
+            Map<String, Object> bookingDetails = new HashMap<>();
+            bookingDetails.put("packageId", packageId);
+            bookingDetails.put("userId", packageSnapshot.get("userId"));
+
+            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
+            if (hotels != null && !hotels.isEmpty()) {
+                String hotelId = (String) hotels.get(0).get("hotelId");
+                bookingDetails.put("hotelId", hotelId);
+                String roomsBooked = (String) hotels.get(0).get("roomsBooked");
+                bookingDetails.put("roomsBooked", roomsBooked);
             }
+
+            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
+            if (flights != null && !flights.isEmpty()) {
+                String flightId = (String) flights.get(0).get("flightId");
+                bookingDetails.put("flightId", flightId);
+                String seatsBooked = (String) flights.get(0).get("seatsBooked");
+                bookingDetails.put("seatsBooked", seatsBooked);
+                String customerName = (String) flights.get(0).get("customerName");
+                bookingDetails.put("customerName", customerName);
+            }
+            
+            bookingDetails.put("action", "ABORT");
+            ApiFuture<String> flightMessageIdFuture = brokerService.publishMessage("flight-topic", bookingDetails);
+            ApiFuture<String> hotelMessageIdFuture = brokerService.publishMessage("hotel-topic", bookingDetails);
+
+            // Wait for the futures to complete
+            String flightMessageId = flightMessageIdFuture.get();
+            String hotelMessageId = hotelMessageIdFuture.get();
 
             transaction.update(packageRef, "flightConfirmStatus", false);
-            // set the number of seats booked in the flights to zero
-            if (flights != null) {
-                for (Map<String, Object> flight : flights) {
-                    String flightId = (String) flight.get("flightId");
-                    DocumentReference flightRef = db.collection("flights").document(flightId);
-                    transaction.update(flightRef, "seatsBooked", 0);
-                }
-            }
-
-            String hotelMessageId = brokerService.publishMessage("hotel-cancel-request", bookingDetails);
-            if (hotelMessageId == null) {
-                logger.error("flight-cancel-requests message is null");
-                logger.error("message content: {}", bookingDetails);
-            }
+            transaction.update(packageRef, "seatsBooked", 0);
+            transaction.update(packageRef, "flightCancelStatus", true);
 
             transaction.update(packageRef, "hotelConfirmStatus", false);
-            // aet the number of rooms booked in the hotels to zero
-            if (hotels != null) {
-                for (Map<String, Object> hotel : hotels) {
-                    String hotelId = (String) hotel.get("hotelId");
-                    DocumentReference hotelRef = db.collection("hotels").document(hotelId);
-                    transaction.update(hotelRef, "roomsBooked", 0);
-                }
-            }
-            return "Travel Package " + packageId + " cancelled successfully.";
+            transaction.update(packageRef, "roomsBooked", 0);
+            transaction.update(packageRef, "hotelCancelStatus", true);
+
+            return "Travel Package " + packageId + " cancelled initated successfully.";
         });
     }
-
+    
     // Methods for Before Booking
     public void addFlightToPackage(String packageId, Map<String, Object> flightDetails) throws ExecutionException, InterruptedException {
        Firestore db = firestore;
        db.runTransaction(transaction -> {
+        // remove the packageId from the flightDetails 
+          flightDetails.remove("packageId");
           DocumentReference packageRef = db.collection("travelPackages").document(packageId);
           transaction.update(packageRef, "flights", FieldValue.arrayUnion(flightDetails));
               return null;
@@ -254,6 +277,8 @@ public class TransactionCoordinatorService {
     public void addHotelToPackage(String packageId, Map<String, Object> hotelDetails) throws ExecutionException, InterruptedException {
         Firestore db = firestore;
         db.runTransaction(transaction -> {
+            // remove the packageId from the hotelDetails
+            hotelDetails.remove("packageId");
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
             transaction.update(packageRef, "hotels", FieldValue.arrayUnion(hotelDetails));
             return null;

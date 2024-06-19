@@ -324,15 +324,18 @@ async function confirmFlightBooking(event) {
   const selectedFlight = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
   const numPassengers = flightBookingSection.querySelector('.numPassengers').value;
   const customerName = flightBookingSection.querySelector('.passengerNames input').value;
+  const flightDestination = flightBookingSection.querySelector('.destination').value;
+  const flightDate = flightBookingSection.querySelector('.date').value;
 
   const token = sessionStorage.getItem('token');
 
   const flightDetails = {
       packageId: packageId,
-      userId: userId,
       flightId: selectedFlight,
       seatsBooked: numPassengers,
-      customerName: customerName
+      customerName: customerName,
+      flightDestination: flightDestination,
+      flightDate: flightDate
   };
 
   document.getElementById('flightId').value = selectedFlight;
@@ -389,14 +392,20 @@ async function confirmHotelBooking(event) {
   const hotelBookingSection = event.target.closest('.hotel-booking');
   const selectedHotel = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
   const numPeople = hotelBookingSection.querySelector('.numPeople').value;
+  const hotelDestination = hotelBookingSection.querySelector('.hotelDestination').value;
+  const hotelDate = hotelBookingSection.querySelector('.hotelDate').value;
+  const hotelDays = hotelBookingSection.querySelector('.numDays').value;
 
   const token = sessionStorage.getItem('token');
 
   const hotelDetails = {
       packageId: packageId,
-      userId: userId,
       hotelId: selectedHotel,
-      roomsBooked: numPeople
+      roomsBooked: numPeople,
+      hotelDestination: hotelDestination,
+      hotelDate: hotelDate,
+      hotelDays: hotelDays
+      
   };
 
   document.getElementById('hotelId').value = selectedHotel;
