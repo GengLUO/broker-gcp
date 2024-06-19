@@ -5,12 +5,11 @@ import be.kuleuven.dsgt4.broker.domain.User;
 import be.kuleuven.dsgt4.broker.services.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.AuthorizationServiceException;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 
 @RestController
@@ -39,11 +38,41 @@ public class UserRestController {
         return user;
     }
 
+    @GetMapping("/getUserBookings")
+    @ResponseBody
+    public ResponseEntity<?> getUserBookings(@RequestParam String userId) {
+        try {
+            List<Map<String, Object>> bookingDetails = userService.getUserBookings(userId);
+            System.out.println(bookingDetails); // Debugging line to check data
+            return ResponseEntity.ok(bookingDetails);
+        } catch (ExecutionException | InterruptedException e) {
+            return ResponseEntity.status(500).body("Error fetching bookings: " + e.getMessage());
+        }
+    }
+    
+    
+    /** manager role users privliged methods */
+
     @GetMapping("/getAllOrders")
     @PreAuthorize("hasAuthority('ROLE_MANAGER')")
-    public String getAllOrders() {
-        //TODO: implement this (incorporate with firestore)
-        return "You are a manager, and there are the orders";
+    public ResponseEntity<?> getAllOrders() {
+        try {
+            List<Map<String, Object>> orders = userService.getAllOrders();
+            return ResponseEntity.ok(orders);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to get orders: " + e.getMessage());
+        }
+    }
+
+    @GetMapping("/getAllCustomers")
+    @PreAuthorize("hasAuthority('ROLE_MANAGER')")
+    public ResponseEntity<?> getAllCustomers() {
+        try {
+            List<Map<String, Object>> customers = userService.getAllCustomers();
+            return ResponseEntity.ok(customers);
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body("Failed to get customers: " + e.getMessage());
+        }
     }
 
     @PostMapping("/{userId}")

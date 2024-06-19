@@ -14,6 +14,8 @@ import {
   getFirestore,
   collection,
   addDoc,
+  setDoc,
+  doc,
   connectFirestoreEmulator
 } from "https://www.gstatic.com/firebasejs/9.9.4/firebase-firestore.js";
 
@@ -34,13 +36,18 @@ const localFirebaseConfig = {
   projectId: "broker-da44b"
 };
 // Use local or production configuration based on the hostname
-const firebaseConfig = (location.hostname === "localhost") ? productionFirebaseConfig : productionFirebaseConfig;
+const firebaseConfig = productionFirebaseConfig;
 
 // Initialize Firebase app
 const firebaseApp = initializeApp(firebaseConfig);
 const auth = getAuth(firebaseApp);
-const user = auth.currentUser;
 const firestore = getFirestore(firebaseApp);
+
+document.addEventListener('DOMContentLoaded', () => {
+  setupAuth();
+  wireGuiUpEvents();
+  setupManaerFunc();
+});
 
 function setupAuth() {
   setPersistence(auth, browserSessionPersistence)
@@ -57,7 +64,6 @@ function setupAuth() {
   window.firebaseApp = firebaseApp;
   window.auth = auth;
   window.firestore = firestore;
-  window.user = user;
 
   // Ensure any existing user is signed out
   try {
@@ -79,16 +85,16 @@ function setupAuth() {
     }
   });
 
-  wireGuiUpEvents();
 }
-
-setupAuth();
 
 function wireGuiUpEvents() {
   const email = document.getElementById("email");
   const password = document.getElementById("password");
   const signInButton = document.getElementById("btnSignIn");
   const signUpButton = document.getElementById("btnSignUp");
+  const dashboardButton = document.getElementById("btnDashboard");
+  const myBookingsButton = document.getElementById("btnMyBookings");
+  const signOutButton = document.getElementById("btnLogout");
 
   signInButton.addEventListener("click", () => {
     setPersistence(window.auth, browserSessionPersistence)
@@ -100,7 +106,7 @@ function wireGuiUpEvents() {
         return userCredential.user.getIdToken();
       })
     .then(async (token) => {
-        createPackageWhenLoggedIn(token);
+        // createPackageWhenLoggedIn(token);
       // Check the user's role and show the appropriate dashboard
           const response = await fetch('/api/whoami', {
         headers: { Authorization: 'Bearer ' + token }
@@ -127,7 +133,8 @@ function wireGuiUpEvents() {
       })
       .then(async (userCredential) => {
         const user = userCredential.user;
-        await addDoc(collection(window.firestore, "users"), {
+        const userRef = doc(window.firestore, "users", user.uid); // Correctly create document reference
+        await setDoc(userRef, {
           uid: user.uid,
           email: user.email,
           role: "user",
@@ -139,14 +146,43 @@ function wireGuiUpEvents() {
         return user.getIdToken();
       })
       .then((token) => {
-//        fetchData(token);
-        createPackageWhenLoggedIn(token);
+        // createPackageWhenLoggedIn(token);
       })
       .catch((error) => {
         console.error("Error during sign up:", error.message);
         alert(error.message);
       });
   });
+
+  dashboardButton.addEventListener("click", () => {
+    // if authenticated, show the dashboard
+    if (auth.currentUser) {
+      showDashboard();
+    }
+  });
+
+  myBookingsButton.addEventListener("click", () => {
+    // if authenticated, fetch the user's bookings
+    if (auth.currentUser) {
+      auth.currentUser.getIdToken().then(token => {
+        fetchMyBookings(token);
+      }
+      ).catch(error => {
+        console.error("Please log in:", error);
+      });
+    }
+  });
+
+  signOutButton.addEventListener("click", () => {
+    auth.signOut()
+      .then(() => {
+        showUnAuthenticated();
+      })
+      .catch((error) => {
+        console.error("Error signing out:", error);
+      });
+  });
+
 }
 
 function storeUserInfo(user) {
@@ -164,51 +200,64 @@ function fetchData(token) {
 }
 
 function showUnAuthenticated() {
+  // clear the user info in the login form
+  document.getElementById("email").value = "";
+  document.getElementById("password").value = "";
+
   document.getElementById("loginContent").style.display = "block";
   document.getElementById("dashboardContent").style.display = "none";
   document.getElementById("dashboardManagerContent").style.display = "none";
+  document.getElementById("myBookingsContent").style.display = "none";
+
+  // hide the navigation links
+  document.getElementById("mainNav").style.display = "none";
 }
 
 function showDashboard() {
   document.getElementById("loginContent").style.display = "none";
   document.getElementById("dashboardContent").style.display = "block";
   document.getElementById("dashboardManagerContent").style.display = "none";
+  document.getElementById("myBookingsContent").style.display = "none";
 
-    addEventListeners(document.querySelector('.flight-booking'));
-    addEventListeners(document.querySelector('.hotel-booking'));
+  //unhide the navigation links
+  document.getElementById("mainNav").style.display = "block";
+
+  addEventListeners(document.querySelector('.flight-booking'));
+  addEventListeners(document.querySelector('.hotel-booking'));
 }
 
-function createPackageWhenLoggedIn(token) {
-        const uid = sessionStorage.getItem('uid');
-        const packageDetails = {
-            packageId: "",
-            userId: uid,
-            hotelId: "",
-            flightId: "",
-            roomsBooked: 0,
-            seatsBooked: 0,
-            customerName: ""
-        };
+function createPackage(token) {
+  const uid = sessionStorage.getItem('uid');
+  const packageDetails = {
+      packageId: "",
+      userId: uid,
+      hotelId: "",
+      flightId: "",
+      roomsBooked: 0,
+      seatsBooked: 0,
+      customerName: ""
+  };
 
-        fetch('/api/travel/createPackage', {
-            method: 'POST',
-            headers: {
-                Authorization: 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(packageDetails)
-        })
-            .then(response => response.json())
-            .then(data => {
-                document.getElementById('packageId').value = data.packageId;
-            })
-            .catch(error => console.error('Error:', error));
+  fetch('/api/travel/createPackage', {
+      method: 'POST',
+      headers: {
+          Authorization: 'Bearer ' + token,
+          'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(packageDetails)
+  })
+      .then(response => response.json())
+      .then(data => {
+          document.getElementById('packageId').value = data.packageId;
+      })
+      .catch(error => console.error('Error:', error));
 }
 
 function showManagerDashboard() {
   document.getElementById("loginContent").style.display = "none";
   document.getElementById("dashboardContent").style.display = "none";
   document.getElementById("dashboardManagerContent").style.display = "block";
+  document.getElementById("myBookingsContent").style.display = "none";
 }
 
 function getHello(token) {
@@ -315,6 +364,9 @@ function showPassengerFields(event) {
       </div>
     `;
   }
+
+  // create travel package
+  createPackage(sessionStorage.getItem('token'));
 }
 
 async function confirmFlightBooking(event) {
@@ -405,7 +457,7 @@ async function confirmHotelBooking(event) {
       hotelDestination: hotelDestination,
       hotelDate: hotelDate,
       hotelDays: hotelDays
-      
+
   };
 
   document.getElementById('hotelId').value = selectedHotel;
@@ -476,12 +528,18 @@ function showBookingSummary() {
 }
 
 document.getElementById('finalizeBooking').addEventListener('click', () => {
+  // get flight booking section by class name
+  const flightBookingSection = document.querySelector('.flight-booking');
+  const flightId = flightBookingSection.querySelector('input[name^="flight"]:checked').value;
+  const seatsBooked = flightBookingSection.querySelector('.numPassengers').value;
+  const customerName = flightBookingSection.querySelector('.passengerNames input').value;
+
+  // get hotel booking section by class name
+  const hotelBookingSection = document.querySelector('.hotel-booking');
+  const hotelId = hotelBookingSection.querySelector('input[name^="hotel"]:checked').value;
+  const roomsBooked = hotelBookingSection.querySelector('.numPeople').value;
+
   const packageId = document.getElementById('packageId').value;
-  const hotelId = document.getElementById('hotelId').value;
-  const roomsBooked = document.getElementById('roomsBooked').value;
-  const flightId = document.getElementById('flightId').value;
-  const seatsBooked = document.getElementById('seatsBooked').value;
-  const customerName = document.getElementById('customerName').value;
 
   const userId = sessionStorage.getItem('uid');
   console.log("Dashboard JS finalizeBooking: user id: " + userId);
@@ -506,11 +564,71 @@ document.getElementById('finalizeBooking').addEventListener('click', () => {
       document.getElementById('finalizeBooking').classList.add('hidden');
       document.getElementById('flightBookings').innerHTML = '<div class="flight-booking"></div>';
       document.getElementById('hotelBookings').innerHTML = '<div class="hotel-booking"></div>';
+      // clear the packageId
+      document.getElementById('packageId').value = '';
   });
 });
 
-/////////////////////////////////////////////
-document.addEventListener('DOMContentLoaded', function () {
+function fetchMyBookings(token) {
+  const userId = sessionStorage.getItem('uid');
+  fetch(`/api/getUserBookings?userId=${userId}`, {
+    headers: { Authorization: 'Bearer ' + token }
+  })
+  .then(response => response.json())
+  .then(data => {
+    displayMyBookings(data);
+    showMyBookings();
+  })
+  .catch(error => {
+    console.error("Error fetching my bookings:", error);
+  });
+}
+
+function displayMyBookings(bookings) {
+  if (!Array.isArray(bookings)) {
+    console.error("Expected an array but received:", bookings);
+    return;
+  }
+
+  const tableBody = document.getElementById('bookingsTableBody');
+  tableBody.innerHTML = ''; // Clear any existing rows
+
+  // Define headers
+  const headers = ['Package ID', 'Customer Name', 'Flight Destination', 'Flight Date', 'Flight ID', 'Seats Booked', 'Flight Confirmation','Hotel Destination', 'Hotel Date', 'Hotel Days', 'Hotel ID', 'Rooms Booked', 'Hotel Confirmation'];
+
+  // Create table header row
+  const headerRow = document.createElement('tr');
+  headers.forEach(header => {
+    const th = document.createElement('th');
+    th.className = 'py-2 px-4 border-b border-gray-200';
+    th.textContent = header;
+    headerRow.appendChild(th);
+  });
+  tableBody.appendChild(headerRow);
+
+  // Create table body
+  bookings.forEach(booking => {
+    const row = document.createElement('tr');
+    const cells = ['packageId', 'customerName', 'flightDestination', 'flightDate', 'flightId', 'seatsBooked', 'flightConfirmStatus', 'hotelDestination', 'hotelDate', 'hotelDays', 'hotelId', 'roomsBooked', 'hotelConfirmStatus'];
+    cells.forEach(cell => {
+      const td = document.createElement('td');
+      td.className = 'py-2 px-4 border-b border-gray-200';
+      td.textContent = booking[cell] || 'N/A';
+      row.appendChild(td);
+    });
+    tableBody.appendChild(row);
+  });
+}
+
+function showMyBookings() {
+  document.getElementById("loginContent").style.display = "none";
+  document.getElementById("dashboardContent").style.display = "none";
+  document.getElementById("dashboardManagerContent").style.display = "none";
+  document.getElementById("myBookingsContent").style.display = "block";
+}
+
+
+function setupManaerFunc() {
   const getOrdersButton = document.getElementById('getOrders');
   const getCustomersButton = document.getElementById('getCustomers');
   const dataDisplay = document.getElementById('dataDisplay');
@@ -518,7 +636,7 @@ document.addEventListener('DOMContentLoaded', function () {
   getOrdersButton.addEventListener('click', function () {
     fetch('/api/getAllOrders', {
       headers: {
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + sessionStorage.getItem('token')
       }
     }).then(response => {
           if (!response.ok) {
@@ -538,7 +656,7 @@ document.addEventListener('DOMContentLoaded', function () {
   getCustomersButton.addEventListener('click', function () {
     fetch('/api/getAllCustomers', {
       headers: {
-        'Authorization': 'Bearer ' + token
+        'Authorization': 'Bearer ' + sessionStorage.getItem('token')
       }
     }).then(response => {
           if (!response.ok) {
@@ -558,18 +676,45 @@ document.addEventListener('DOMContentLoaded', function () {
   function displayData(data, type) {
     // Clear any existing data
     dataDisplay.innerHTML = '';
-
+  
     // Display the new data
     const heading = document.createElement('h3');
     heading.textContent = `Fetched ${type}:`;
     dataDisplay.appendChild(heading);
-
-    const pre = document.createElement('pre');
-    pre.textContent = JSON.stringify(data, null, 2);
-    dataDisplay.appendChild(pre);
+  
+    // Create a table
+    const table = document.createElement('table');
+    table.className = 'my-beautiful-table';
+  
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    Object.keys(data[0]).forEach(key => {
+      const th = document.createElement('th');
+      th.textContent = key;
+      headerRow.appendChild(th);
+    });
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+  
+    // Create table body
+    const tbody = document.createElement('tbody');
+    data.forEach(item => {
+      const row = document.createElement('tr');
+      Object.values(item).forEach(value => {
+        const td = document.createElement('td');
+        td.textContent = value;
+        row.appendChild(td);
+      });
+      tbody.appendChild(row);
+    });
+    table.appendChild(tbody);
+  
+    // Append the table to the data display
+    dataDisplay.appendChild(table);
   }
 
   function displayError(message) {
     dataDisplay.innerHTML = `<p class="text-red-600">${message}</p>`;
   }
-});
+}
