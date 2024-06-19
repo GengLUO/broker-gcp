@@ -5,6 +5,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.WebClient;
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
+
+import java.time.Duration;
 
 @Service("hotelTransactionService")
 public class TransactionService {
@@ -35,8 +38,16 @@ public class TransactionService {
                 .doOnSuccess(response -> {
                     System.out.println("Response received: " + response);
                 })
-                .onErrorResume(e -> {
+                .doOnError(e -> {
                     System.out.println("Error occurred: " + e.getMessage());
+                })
+                .retryWhen(Retry.backoff(3, Duration.ofSeconds(1))
+                        .doAfterRetry(retrySignal -> {
+                            System.out.println("Retrying... Attempt: " + (retrySignal.totalRetries() + 1));
+                        })
+                )
+                .onErrorResume(e -> {
+                    System.out.println("Error occurred after retries: " + e.getMessage());
                     return Mono.just("Error occurred: " + e.getMessage());
                 });
     }
