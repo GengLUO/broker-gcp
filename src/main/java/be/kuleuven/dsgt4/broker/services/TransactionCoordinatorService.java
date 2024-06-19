@@ -8,6 +8,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ExecutionException;
@@ -25,9 +27,10 @@ public class TransactionCoordinatorService {
     @Autowired
     private BrokerService brokerService;
 
-    public TravelPackage createTravelPackage(String userId) {
-        String packageId = generatePackageId();
-        TravelPackage travelPackage = new TravelPackage(userId, packageId);
+    public TravelPackage createTravelPackage(Map<String, Object> packageDetails) {
+        logger.info("Received package details: {}", packageDetails);
+        TravelPackage travelPackage = new TravelPackage(packageDetails);
+        logger.info("Constructed TravelPackage: {}", travelPackage);
         // Store the travel package in Firestore
         storeTravelPackage(travelPackage);
         return travelPackage;
@@ -40,49 +43,38 @@ public class TransactionCoordinatorService {
         try {
             result.get();  // Ensure the write operation completes
             logger.info("Stored travel package with packageId: {}", travelPackage.getPackageId());
+            logger.info("Travel package details: {}", travelPackage);
         } catch (InterruptedException | ExecutionException e) {
             logger.error("Error storing travel package: {}", e.getMessage());
         }
     }
 
-    // 1. Prepare Phase of the 2PC Booking (Prepare Booking)
     public ApiFuture<String> bookTravelPackage(String packageId, Map<String, Object> bookingDetails) {
         Firestore db = firestore;
 
         return db.runTransaction(transaction -> {
             logger.info("Booking travel package with packageId: {}", packageId);
+            // Read the travel package document
             DocumentReference packageRef = db.collection("travelPackages").document(packageId);
             DocumentSnapshot packageSnapshot = transaction.get(packageRef).get();
+            boolean flgihtStatusExist = packageSnapshot.contains("hotelConfirmStatus");
+            boolean hotelStatusExist = packageSnapshot.contains("flightConfirmStatus");
+            // Link the travel package to the user by reference
+            DocumentReference userRef = db.collection("users").document((String) bookingDetails.get("userId"));
+            DocumentSnapshot userSnapshot = transaction.get(userRef).get();
+            // Retrieve or initialize the user's travel packages list
+            List<DocumentReference> travelPackages = (List<DocumentReference>) userSnapshot.get("travelPackages");
 
-            if (!packageSnapshot.exists()) {
-                throw new IllegalArgumentException("Travel Package with ID " + packageId + " not found");
-            }
-
-            List<Map<String, Object>> flights = (List<Map<String, Object>>) packageSnapshot.get("flights");
-            List<Map<String, Object>> hotels = (List<Map<String, Object>>) packageSnapshot.get("hotels");
-
-            // Print flights
-            if (flights != null) {
-                System.out.println("Flights:");
-                for (Map<String, Object> flight : flights) {
-                    System.out.println(flight);
+            // for each entry in booking details that corresponds with the entries in the travel package, update the travel package
+            for (Map.Entry<String, Object> entry : bookingDetails.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                if (packageSnapshot.contains(key)) {
+                    transaction.update(packageRef, key, value);
                 }
-            } else {
-                System.out.println("flights is Null.");
-            }
-
-            // Print hotels
-            if (hotels != null) {
-                System.out.println("Hotels:");
-                for (Map<String, Object> hotel : hotels) {
-                    System.out.println(hotel);
-                }
-            } else {
-                System.out.println("hotels is Null.");
             }
 
             // Prepare Phase
-            // add an actribute action in the bookingDetails to indicate the action and publish the message
             bookingDetails.put("action", "PREPARE");
             String flightMessageId = brokerService.publishMessage("flight-topic", bookingDetails);
             if (flightMessageId == null) {
@@ -90,8 +82,9 @@ public class TransactionCoordinatorService {
                 logger.info("message content: {}", bookingDetails);
             }
 
-            // add to the extracted packageSnapshot with a new attribute of flight status being pending
-            transaction.update(packageRef, "flightConfirmStatus", false);
+            if (flgihtStatusExist) {
+                transaction.update(packageRef, "flightConfirmStatus", false);
+            }
 
             String hotelMessageId = brokerService.publishMessage("hotel-topic", bookingDetails);
             if (hotelMessageId == null) {
@@ -99,14 +92,19 @@ public class TransactionCoordinatorService {
                 logger.info("message content: {}", bookingDetails);
             }
 
-            // add to the extracted packageSnapshot with a new attribute of hotel status being pending
-            transaction.update(packageRef, "hotelConfirmStatus", false);
+            if (hotelStatusExist) {
+                transaction.update(packageRef, "hotelConfirmStatus", false);
+            }
 
-            String userId = (String) bookingDetails.get("userId");
-            DocumentReference userRef = db.collection("users").document(userId).collection("travelPackages").document(packageId);
-            transaction.set(userRef, bookingDetails);
+            if (travelPackages == null) {
+                travelPackages = new ArrayList<>();
+            }
+            travelPackages.add(packageRef);
 
-            return "Travel Package " + packageId + " initated booking successfully.";
+            // Update the user document with the new list of travel packages
+            transaction.update(userRef, "travelPackages", travelPackages);
+
+            return "Travel Package " + packageId + " initiated booking successfully.";
         });
     }
 

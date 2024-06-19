@@ -5,12 +5,17 @@
     <title>TravelTogether</title>
     <link href="/css/style.build.tailwind.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.16/dist/tailwind.min.css" rel="stylesheet">
+    <link href="/css/table.css" rel="stylesheet" >
 </head>
 <body class="h-full bg-gray-100 text-gray-900">
 <!-- Navigation Bar -->
-<nav class="bg-blue-600 p-4 text-white">
+<nav id="mainNav" class="bg-blue-600 p-4 text-white">
     <div class="container mx-auto flex justify-between items-center">
         <h1 class="text-2xl font-bold">TravelTogether</h1>
+        <div>
+            <a href="#" class="px-4 hover:text-gray-200" id="btnDashboard">Dashboard</a>
+            <a href="#" class="px-4 hover:text-gray-200" id="btnMyBookings">My Bookings</a>
+            <a href="#" class="px-4 hover:text-gray-200" id="btnLogout">Logout</a>
     </div>
 </nav>
 
@@ -154,6 +159,7 @@
     </div>
 </div>
 
+<!-- Manager Content -->
 <div id="dashboardManagerContent" class="flex-grow hidden container mx-auto p-8">
     <div class="bg-white p-8 rounded-lg shadow-md h-full">
         <form class="px-8 pt-6 pb-8 mb-4">
@@ -169,6 +175,32 @@
             </div>
         </form>
         <div id="dataDisplay" class="mt-4 p-4 bg-gray-100 rounded-lg shadow-inner"></div>
+    </div>
+</div>
+
+<!-- My Bookings Content -->
+<div id="myBookingsContent" class="hidden container mx-auto p-8">
+    <div class="bg-white p-8 rounded-lg shadow-md">
+        <h1 class="text-4xl font-bold mb-8 text-center">My Bookings</h1>
+        <table id="bookingsTable" class="my-beautiful-table">
+            <thead>
+                <tr>
+                    <!-- <th class="py-2 px-4 border-b border-gray-200">Package ID</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Customer Name</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Flight Destination</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Flight Date</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Flight ID</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Seats Booked</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Hotel Destination</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Hotel Date</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Hotel Days</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Hotel ID</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Rooms Booked</th>
+                    <th class="py-2 px-4 border-b border-gray-200">Action</th> -->
+                </tr>
+            </thead>
+            <tbody id="bookingsTableBody"></tbody>
+        </table>
     </div>
 </div>
 

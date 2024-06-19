@@ -51,7 +51,6 @@ public class BrokerRestController {
 
     private final BrokerService brokerService;
     private final TransactionCoordinatorService transactionCoordinatorService;
-    private static final Executor executor = Executors.newCachedThreadPool();
 
     @Autowired
     public BrokerRestController(BrokerService brokerService, TransactionCoordinatorService transactionCoordinatorService) {
@@ -90,11 +89,10 @@ public class BrokerRestController {
     @PostMapping("/packages")
     public ResponseEntity<?> createTravelPackage(@RequestBody Map<String, Object> packageDetails) {
         try {
-            String userId = (String) packageDetails.get("userId");
-            TravelPackage travelPackage = transactionCoordinatorService.createTravelPackage(userId);
-            packageDetails.put("packageId", travelPackage.getPackageId());
-            // packageDetails.put("userId", userId);
-
+            // print the data type of each item in the packageDetails
+            TravelPackage travelPackage = transactionCoordinatorService.createTravelPackage(packageDetails);
+            // confrim the package is created by printing the content
+            System.out.println("Travel package created: " + travelPackage.toString());
             // Include packageId in the resource
             EntityModel<Map<String, String>> resource = EntityModel.of(
                     Map.of(
@@ -178,6 +176,7 @@ public class BrokerRestController {
             @Override
             public void onFailure(Throwable t) {
                 ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body("Error processing travel package booking: " + t.getMessage());
+                System.out.println("TransactionCoordinatorService.bookTravelPackage failed: " + t.getMessage());
             }
     
             @Override
@@ -185,6 +184,7 @@ public class BrokerRestController {
                 EntityModel<String> resource = bookingToEntityModel(packageId, message);
                 ResponseEntity.created(WebMvcLinkBuilder.linkTo(WebMvcLinkBuilder.methodOn(BrokerRestController.class)
                         .bookTravelPackage(packageId, bookingDetails)).toUri()).body(resource);
+                System.out.println("TransactionCoordinatorService.bookTravelPackage sucess: " + message);
             }
         }, Runnable::run);
         return ResponseEntity.ok("Booking process initiated for package ID: " + packageId);
