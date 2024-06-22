@@ -26,3 +26,4 @@ Desktop.ini
 
 # remove node modules folder
 node_modules/
+firebase-adminsdk.json
