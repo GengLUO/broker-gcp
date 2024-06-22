@@ -2,20 +2,38 @@
   "emulators": {
     "ui": {
       "enabled": true,
-      "host": "0.0.0.0",
       "port": 8081
     },
     "auth": {
-      "host": "0.0.0.0",
       "port": 8082
     },
     "pubsub": {
-      "host": "0.0.0.0",
-      "port": 8083
+      "port": 8085
     },
     "firestore": {
-      "host": "0.0.0.0",
       "port": 8084
+    },
+    "functions": {
+      "port": 5001
+    },
+    "database": {
+      "port": 9000
+    },
+    "singleProjectMode": true,
+    "hosting": {
+      "port": 5002
     }
+  },
+  "firestore": {
+    "rules": "firestore.rules",
+    "indexes": "firestore.indexes.json"
+  },
+  "hosting": {
+    "public": "public",
+    "ignore": [
+      "firebase.json",
+      "**/.*",
+      "**/node_modules/**"
+    ]
   }
 }

@@ -6,6 +6,8 @@ inbound_services:
   - warmup
 
 handlers:
+  - url: /static
+    static_dir: target/classes/static
   - url: /.*
     secure: always
     script: auto
@@ -16,3 +18,10 @@ automatic_scaling:
   max_pending_latency: 15000ms
   target_cpu_utilization: 0.9
   target_throughput_utilization: 0.9
+
+readiness_check:
+  path: "/readiness_check"
+  timeout_sec: 5
+  check_interval_sec: 5
+  failure_threshold: 2
+  success_threshold: 2

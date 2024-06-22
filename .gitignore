@@ -3,3 +3,26 @@ target/
 firebase-tools-linux
 
 *.log
+
+# src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json
+
+# operating system specific files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.idea/
+*.iml
+*.ipr
+*.iws
+*.classpath
+*.project
+
+# windows operating system files
+Desktop.ini
+
+# linux operating system files
+*.swp
+
+# remove node modules folder
+node_modules/
