@@ -4,7 +4,7 @@ firebase-tools-linux
 
 *.log
 
-# src/main/java/be/kuleuven/dsgt4/auth/firebase-adminsdk.json
+**/firebase-adminsdk.json
 
 # operating system specific files
 .DS_Store
